@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { User, Shield, Save, ArrowLeft, Lock, CheckCircle2, AlertCircle, Upload, Image as ImageIcon, Store } from "lucide-react";
+import { User, Shield, Save, ArrowLeft, Lock, CheckCircle2, AlertCircle, Upload, Image as ImageIcon, Store, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profileMsg, setProfileMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [showPwdModal, setShowPwdModal] = useState(false);
 
   const [form, setForm] = useState({
     fullName: "",
@@ -253,6 +254,21 @@ export default function ProfilePage() {
                   ))}
                 </select>
               </div>
+
+              <div className="pt-2 border-t mt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-2 border-primary/40 hover:bg-primary/5 text-primary font-semibold"
+                  onClick={() => {
+                    setShowPwdModal(true);
+                    document.getElementById("password-section")?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                >
+                  <Lock className="h-4 w-4" />
+                  🔒 ĐỔI MẬT KHẨU TÀI KHOẢN
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
@@ -381,7 +397,7 @@ export default function ProfilePage() {
       <Separator className="my-8" />
 
       {/* Change Password Card */}
-      <Card className="shadow-sm">
+      <Card id="password-section" className="shadow-sm">
         <CardHeader>
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             <Lock className="h-4 w-4 text-primary" />
@@ -433,6 +449,77 @@ export default function ProfilePage() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Password Change Modal Dialog Triggered from Section 1 */}
+      {showPwdModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md bg-white dark:bg-slate-900 shadow-2xl relative animate-in fade-in zoom-in duration-200">
+            <button
+              onClick={() => setShowPwdModal(false)}
+              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <CardHeader>
+              <CardTitle className="text-xl flex items-center gap-2">
+                <Lock className="h-5 w-5 text-primary" />
+                Đổi Mật Khẩu Tài Khoản
+              </CardTitle>
+              <CardDescription>
+                Mật khẩu tối thiểu 8 ký tự, bao gồm ít nhất 1 chữ hoa và 1 chữ số
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={async (e) => {
+                await handleChangePassword(e);
+                if (pwdMsg?.type === "success") {
+                  setTimeout(() => setShowPwdModal(false), 1500);
+                }
+              }} className="space-y-4">
+                {pwdMsg && (
+                  <div className={`p-3 rounded-lg border flex items-center gap-2 text-sm ${
+                    pwdMsg.type === "success" ? "bg-green-50 border-green-200 text-green-700" : "bg-red-50 border-red-200 text-red-700"
+                  }`}>
+                    {pwdMsg.type === "success" ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertCircle className="h-4 w-4 shrink-0" />}
+                    <span>{pwdMsg.text}</span>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label>Mật khẩu hiện tại (*)</Label>
+                  <Input
+                    type="password"
+                    value={pwdForm.currentPassword}
+                    onChange={(e) => setPwdForm({ ...pwdForm, currentPassword: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Mật khẩu mới (*)</Label>
+                  <Input
+                    type="password"
+                    value={pwdForm.newPassword}
+                    onChange={(e) => setPwdForm({ ...pwdForm, newPassword: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Xác nhận mật khẩu mới (*)</Label>
+                  <Input
+                    type="password"
+                    value={pwdForm.confirmPassword}
+                    onChange={(e) => setPwdForm({ ...pwdForm, confirmPassword: e.target.value })}
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={pwdSaving}>
+                  <Lock className="h-4 w-4 mr-2" />
+                  {pwdSaving ? "Đang cập nhật..." : "Cập nhật mật khẩu"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
