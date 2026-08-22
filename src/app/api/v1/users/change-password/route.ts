@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { auth } from "@/lib/auth/config";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -8,8 +8,9 @@ import { apiSuccess, apiError } from "@/lib/utils/api-response";
 
 export async function PUT(req: NextRequest) {
   try {
-    const token = await getToken({ req });
-    if (!token?.sub) return apiError("Unauthorized", 401);
+    const session = await auth();
+    if (!session?.user) return apiError("Unauthorized", 401);
+    const userId = (session.user as any).id;
 
     const body = await req.json();
     const { currentPassword, newPassword } = body;
@@ -25,23 +26,23 @@ export async function PUT(req: NextRequest) {
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.id, token.sub))
+      .where(eq(users.id, userId))
       .limit(1);
 
     if (!user) return apiError("User not found", 404);
 
     const isValid = await compare(currentPassword, user.passwordHash);
     if (!isValid) {
-      return apiError("Current password is incorrect", 401, "ERR_UI_003");
+      return apiError("Mật khẩu hiện tại không chính xác", 401, "ERR_UI_003");
     }
 
     const newHash = await hash(newPassword, 10);
     await db
       .update(users)
       .set({ passwordHash: newHash, updatedAt: new Date() })
-      .where(eq(users.id, token.sub));
+      .where(eq(users.id, userId));
 
-    return apiSuccess({ message: "Password changed successfully" });
+    return apiSuccess({ message: "Đổi mật khẩu thành công" });
   } catch (error) {
     return apiError("Internal server error", 500);
   }

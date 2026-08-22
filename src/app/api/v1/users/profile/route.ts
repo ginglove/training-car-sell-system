@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { auth } from "@/lib/auth/config";
 import { db } from "@/lib/db";
 import { users, customerProfiles } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -8,13 +8,14 @@ import { mockEncrypt, maskCCCD } from "@/lib/mock/kms";
 
 export async function GET(req: NextRequest) {
   try {
-    const token = await getToken({ req });
-    if (!token?.sub) return apiError("Unauthorized", 401);
+    const session = await auth();
+    if (!session?.user) return apiError("Unauthorized", 401);
+    const userId = (session.user as any).id;
 
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.id, token.sub))
+      .where(eq(users.id, userId))
       .limit(1);
 
     if (!user) return apiError("User not found", 404);
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
     const [profile] = await db
       .select()
       .from(customerProfiles)
-      .where(eq(customerProfiles.userId, token.sub))
+      .where(eq(customerProfiles.userId, userId))
       .limit(1);
 
     return apiSuccess({
@@ -46,8 +47,9 @@ export async function GET(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const token = await getToken({ req });
-    if (!token?.sub) return apiError("Unauthorized", 401);
+    const session = await auth();
+    if (!session?.user) return apiError("Unauthorized", 401);
+    const userId = (session.user as any).id;
 
     const body = await req.json();
     const { fullName, email, identityCardNumber, identityCardDate, identityCardPlace, permanentAddress, monthlyIncome } = body;
@@ -57,14 +59,14 @@ export async function PUT(req: NextRequest) {
     if (fullName) updateData.fullName = fullName;
     if (email) updateData.email = email;
 
-    await db.update(users).set(updateData).where(eq(users.id, token.sub));
+    await db.update(users).set(updateData).where(eq(users.id, userId));
 
     // Upsert customer_profiles if CCCD data provided
     if (identityCardNumber || permanentAddress || monthlyIncome) {
       const [existing] = await db
         .select()
         .from(customerProfiles)
-        .where(eq(customerProfiles.userId, token.sub))
+        .where(eq(customerProfiles.userId, userId))
         .limit(1);
 
       const profileData: Record<string, any> = { updatedAt: new Date() };
@@ -78,10 +80,10 @@ export async function PUT(req: NextRequest) {
       if (monthlyIncome) profileData.monthlyIncome = monthlyIncome;
 
       if (existing) {
-        await db.update(customerProfiles).set(profileData).where(eq(customerProfiles.userId, token.sub));
+        await db.update(customerProfiles).set(profileData).where(eq(customerProfiles.userId, userId));
       } else {
         await db.insert(customerProfiles).values({
-          userId: token.sub,
+          userId: userId,
           identityCardNumber: profileData.identityCardNumber || mockEncrypt("000000000000"),
           identityCardMasked: profileData.identityCardMasked || "00000000****",
           identityCardDate: profileData.identityCardDate || new Date().toISOString().split("T")[0],

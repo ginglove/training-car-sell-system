@@ -3,12 +3,20 @@
 import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Car, Eye, EyeOff, Lock, Phone, Mail } from "lucide-react";
+import { Car, Eye, EyeOff, Lock, Phone, Mail, ArrowLeft, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+
+const DEMO_ACCOUNTS = [
+  { role: "ADMIN", email: "admin@autodealer.vn", name: "Nguyễn Văn Admin" },
+  { role: "MANAGER", email: "manager.hn@autodealer.vn", name: "Trần Thị Manager HN" },
+  { role: "SALE", email: "sale1@autodealer.vn", name: "Phạm Văn Sale HN 1" },
+  { role: "CUSTOMER", email: "customer1@gmail.com", name: "Nguyễn Văn Tuấn" },
+];
 
 function LoginContent() {
   const router = useRouter();
@@ -26,6 +34,12 @@ function LoginContent() {
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [countdown, setCountdown] = useState(0);
+
+  function quickFillAccount(email: string) {
+    setIdentity(email);
+    setPassword("Admin@123");
+    setError("");
+  }
 
   async function handlePasswordLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -96,15 +110,40 @@ function LoginContent() {
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="text-center">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <Car className="h-8 w-8 text-primary" />
-          <CardTitle className="text-2xl">AUTO DEALERSHIP</CardTitle>
-        </div>
-        <CardDescription>Dang nhap vao he thong</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <div className="w-full max-w-md space-y-4">
+      <Button variant="ghost" onClick={() => router.back()} className="mb-2">
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Quay lai
+      </Button>
+
+      <Card className="w-full">
+        <CardHeader className="text-center pb-4">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Car className="h-8 w-8 text-primary" />
+            <CardTitle className="text-2xl font-bold">AUTO DEALERSHIP</CardTitle>
+          </div>
+          <CardDescription>Dang nhap vao he thong quan ly & ban xe</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border text-xs space-y-2">
+            <div className="flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-300">
+              <UserCheck className="h-3.5 w-3.5 text-primary" />
+              <span>Tai khoan Demo (Click de tu dong nhap):</span>
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {DEMO_ACCOUNTS.map((acc) => (
+                <button
+                  key={acc.role}
+                  type="button"
+                  onClick={() => quickFillAccount(acc.email)}
+                  className="flex items-center justify-between p-1.5 rounded bg-white dark:bg-slate-800 border hover:border-primary text-left text-[11px] transition-colors"
+                >
+                  <span className="font-medium truncate">{acc.name.split(" ")[0]}</span>
+                  <Badge variant="outline" className="text-[9px] px-1 py-0">{acc.role}</Badge>
+                </button>
+              ))}
+            </div>
+          </div>
         <Tabs defaultValue="password">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="password">Mat khau</TabsTrigger>
@@ -225,6 +264,7 @@ function LoginContent() {
         </Tabs>
       </CardContent>
     </Card>
+  </div>
   );
 }
 
