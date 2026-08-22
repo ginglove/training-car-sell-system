@@ -2,6 +2,7 @@ import "dotenv/config";
 import { getDatabase } from "@netlify/database";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
+import { sql as drizzleSql } from "drizzle-orm";
 import { hashSync } from "bcryptjs";
 import * as schema from "../src/lib/db/schema";
 import { mockEncrypt, maskCCCD } from "../src/lib/mock/kms";
@@ -20,6 +21,9 @@ async function seed() {
   const db = drizzle(sql, { schema });
 
   console.log("🚀 Starting comprehensive enterprise database seed...");
+
+  console.log("🧹 Cleaning up existing data...");
+  await db.execute(drizzleSql`TRUNCATE TABLE audit_logs, refund_requests, vehicle_transfers, loan_applications, payments, order_status_history, order_accessories, orders, trade_in_requests, test_drive_slots, crm_leads, discount_policies, vehicles, vehicle_quotas, vehicle_images, vehicle_variants, vehicle_models, brands, customer_profiles, users, showrooms CASCADE;`);
 
   // 1. Showrooms
   console.log("📍 Seeding showrooms...");
