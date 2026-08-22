@@ -66,7 +66,7 @@ def set_cell_border(cell, top=None, bottom=None, left=None, right=None):
             el.set(qn('w:val'), 'single')
             el.set(qn('w:sz'), '4')
             el.set(qn('w:space'), '0')
-            el.set(qn('w:color'), f'{color.red:02X}{color.green:02X}{color.blue:02X}')
+            el.set(qn('w:color'), rgb_hex(color))
             tcBorders.append(el)
     tcPr.append(tcBorders)
 
@@ -519,7 +519,7 @@ doc.add_page_break()
 add_h1(doc, '2. Đặc Tả Chi Tiết Các Luồng Màn Hình')
 
 # ─── SCR-00: Login ───
-add_h2(doc, '2.1. Luồng 1: Xác Thực & Đăng Nhập (SCR-00, SCR-00-REG, SCR-00-FP, SCR-00-PROF)')
+add_h2(doc, '2.1. Luồng 1: Xác Thực & Đăng Nhập (SCR-00, SCR-00-OTP, SCR-00-REG, SCR-00-FP, SCR-00-PROF)')
 
 add_h3(doc, '2.1.1. SCR-00 — Đăng Nhập / Đăng Xuất / Mock OTP')
 add_bullet(doc, 'URL: /auth/login  |  Prerequisites: Chưa đăng nhập')
@@ -542,7 +542,7 @@ add_wireframe(doc,
 '│  │  [ password                            ]   │                        │\n'
 '│  │  Sai 5 lần → khóa 30 phút                  │                        │\n'
 '│  │                                             │                        │\n'
-'│  │  [       Quên mật khẩu?      ]             │                        │\n'
+'│  │  ☑ Ghi nhớ đăng nhập   [ Quên mật khẩu? ]  │  ← remember_me         │\n'
 '│  │                                             │                        │\n'
 '│  │  [           ĐĂNG NHẬP           ]  🔵    │                        │\n'
 '│  │                                             │                        │\n'
@@ -565,6 +565,8 @@ add_field_table(doc, [
      'Nhận email (admin@autodealer.vn) hoặc SĐT VN. Auto-detect format để route sang đúng auth flow. Trim whitespace.'),
     ('password',        'Password Field',     'Bắt buộc (tab PW)', 'Min 10, 1 hoa, 1 thường, 1 số, 1 ký tự đặc biệt',
      'Icon 👁 toggle show/hide. Đếm failed_login_attempts: sau 5 lần sai → lock 30 phút, hiện countdown timer. Không gửi nếu field trống.'),
+    ('remember_me',     'Checkbox',           'Tùy chọn', 'Boolean. Default: false',
+     'Ghi nhớ đăng nhập. Nếu Checked=true: Refresh Token TTL 30 ngày (lưu HttpOnly cookie / Secure Storage), tự động gia hạn phiên đăng nhập khi mở lại app. Nếu Checked=false: Refresh Token TTL 7 ngày (Session cookie).'),
     ('btn_forgot_pw',   'Link Button',        'Tùy chọn', 'N/A',
      'Điều hướng → /auth/forgot-password. Không cần confirm.'),
     ('btn_login',       'Primary Button',     'N/A', 'N/A',
@@ -601,13 +603,15 @@ add_api_spec(doc, 'POST', '/api/v1/auth/login',
         '{\n'
         '  "tab_mode": "PASSWORD",\n'
         '  "identity": "user@example.com",  // email hoặc phone\n'
-        '  "password": "Abc@123456"\n'
+        '  "password": "Abc@123456",\n'
+        '  "remember_me": true             // boolean, default false. Nếu true: TTL Refresh Token 30 ngày\n'
         '}\n\n'
         '// Đăng nhập OTP:\n'
         '{\n'
         '  "tab_mode": "OTP",\n'
         '  "identity": "0901234567",\n'
-        '  "otp_code": "888888"\n'
+        '  "otp_code": "888888",\n'
+        '  "remember_me": true\n'
         '}'
     ),
     happy_response=(
@@ -664,7 +668,56 @@ add_api_spec(doc, 'POST', '/api/v1/auth/refresh-token',
 )
 
 # ─── SCR-00-REG ───
-add_h3(doc, '2.1.2. SCR-00-REG — Đăng Ký Tài Khoản Mới')
+add_h3(doc, '2.1.2. SCR-00-OTP — Màn Hình Xác Thực Mã OTP Dedicated')
+add_bullet(doc, 'URL: /auth/verify-otp  |  Prerequisites: Vừa kích hoạt gửi OTP từ Login (Tab OTP), Đăng ký (SCR-00-REG) hoặc Quên mật khẩu (SCR-00-FP).')
+add_bullet(doc, 'Navigation: Nhập OTP thành công → Tự động xác thực & điều hướng tiếp theo (Home / Profile / Reset Password).')
+
+add_wireframe(doc,
+'┌─────────────────────────────────────────────────────────────────────────┐\n'
+'│  [🚗 AUTO DEALERSHIP]                          Hotline: 1900-xxxx        │\n'
+'├─────────────────────────────────────────────────────────────────────────┤\n'
+'│                                                                          │\n'
+'│  ┌─────────────────────────────────────────────┐                        │\n'
+'│  │           XÁC THỰC MÃ OTP (SMS)            │                        │\n'
+'│  │                                             │                        │\n'
+'│  │  Mã OTP đã được gửi đến số điện thoại:      │                        │\n'
+'│  │  📲  090*****67                             │                        │\n'
+'│  │                                             │                        │\n'
+'│  │  Nhập mã 6 chữ số:                          │                        │\n'
+'│  │  ┌───┐ ┌───┐ ┌───┐ ┌───┐ ┌───┐ ┌───┐        │                        │\n'
+'│  │  │ 8 │ │ 8 │ │ 8 │ │ 8 │ │ 8 │ │ 8 │        │                        │\n'
+'│  │  └───┘ └───┘ └───┘ └───┘ └───┘ └───┘        │                        │\n'
+'│  │  (Sandbox code: 888888)                     │                        │\n'
+'│  │                                             │                        │\n'
+'│  │  ⏱ Mã sẽ hết hạn sau: 00:58                │                        │\n'
+'│  │                                             │                        │\n'
+'│  │  Chưa nhận được mã?                         │                        │\n'
+'│  │  [ GỬI LẠI MÃ OTP ] (Disabled - đếm ngược)   │                        │\n'
+'│  │                                             │                        │\n'
+'│  │  [               XÁC NHẬN               ] 🔵 │                        │\n'
+'│  │                                             │                        │\n'
+'│  │  [  ← Quay lại đăng nhập  ]                 │                        │\n'
+'│  └─────────────────────────────────────────────┘                        │\n'
+'│                                                                          │\n'
+'└─────────────────────────────────────────────────────────────────────────┘')
+
+add_h3(doc, 'Field Spec Table — SCR-00-OTP (Element Logic & Behavior)')
+add_field_table(doc, [
+    ('target_phone_display', 'Read-only Text',   'N/A', 'Format: (0|84)xxx****xxx',
+     'Hiển thị SĐT nhận OTP dạng masked để bảo mật PII. Lấy từ state / URL session.'),
+    ('otp_input_box_1_6',   '6-Digit Box Group','Bắt buộc', '6 chữ số [0-9]. Sandbox: 888888. TTL 60s.',
+     'Auto-focus ô thứ 1 khi render. Nhập xong 1 số → auto-jump sang ô tiếp theo. Backspace → xóa và lùi về ô trước. Auto-paste khi Ctrl+V/Cmd+V chuỗi 6 số. Auto-submit khi ô thứ 6 được điền.'),
+    ('countdown_timer',     'Live Countdown',  'N/A', 'N/A',
+     'Đếm ngược từ 60 giây (hoặc 300s đối với Reset Password). Khi về 0: ô nhập bị disable + kích hoạt nút [Gửi lại mã OTP].'),
+    ('btn_resend_otp',      'Secondary Button', 'N/A', 'N/A',
+     'Disabled trong thời gian đếm ngược. Khi timer = 0 → Enabled. Click → gọi POST /auth/send-otp. Reset timer về 60s. Giới hạn tối đa 3 lần/phiên.'),
+    ('btn_verify_otp',      'Primary Button',   'N/A', 'N/A',
+     'Disabled nếu chưa nhập đủ 6 chữ số. Click → gọi API xác thực (POST /auth/login hoặc POST /auth/register). Hiển thị loading spinner khi chờ response. Nhập sai 3 lần → Hủy phiên OTP & báo lỗi.'),
+    ('btn_back_login',      'Text Link Button', 'N/A', 'N/A',
+     'Hủy phiên xác thực OTP hiện tại và điều hướng người dùng quay lại màn hình /auth/login.'),
+])
+
+add_h3(doc, '2.1.3. SCR-00-REG — Đăng Ký Tài Khoản Mới')
 add_bullet(doc, 'URL: /auth/register  |  Prerequisites: Chưa có tài khoản')
 add_bullet(doc, 'Navigation: Từ SCR-00 [Đăng ký]. Sau đăng ký thành công → tự đăng nhập → /home')
 
@@ -773,7 +826,7 @@ add_api_spec(doc, 'POST', '/api/v1/auth/register',
 )
 
 # ─── SCR-00-FP ───
-add_h3(doc, '2.1.3. SCR-00-FP — Quên Mật Khẩu & Đặt Lại Mật Khẩu')
+add_h3(doc, '2.1.4. SCR-00-FP — Quên Mật Khẩu & Đặt Lại Mật Khẩu')
 add_bullet(doc, 'URL: /auth/forgot-password  |  URL đặt lại: /auth/reset-password?token=xxx')
 add_bullet(doc, 'Prerequisites: Đã có tài khoản. Flow: 2 bước (nhập identity → nhận OTP → đặt lại)')
 
@@ -887,7 +940,7 @@ add_api_spec(doc, 'POST', '/api/v1/auth/reset-password',
 )
 
 # ─── SCR-00-PROF ───
-add_h3(doc, '2.1.4. SCR-00-PROF — Hồ Sơ Cá Nhân & Cập Nhật CCCD')
+add_h3(doc, '2.1.5. SCR-00-PROF — Hồ Sơ Cá Nhân & Cập Nhật CCCD')
 add_bullet(doc, 'URL: /profile  |  Auth: Bearer token. Role: All.')
 add_bullet(doc, 'Prerequisites: Đã đăng nhập. customer_profile có thể chưa hoàn thiện.')
 
