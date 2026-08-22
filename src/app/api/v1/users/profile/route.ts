@@ -52,17 +52,69 @@ export async function PUT(req: NextRequest) {
     const userId = (session.user as any).id;
 
     const body = await req.json();
-    const { fullName, email, identityCardNumber, identityCardDate, identityCardPlace, permanentAddress, monthlyIncome } = body;
+    const {
+      fullName,
+      email,
+      showroomId,
+      identityCardNumber,
+      identityCardDate,
+      identityCardPlace,
+      permanentAddress,
+      monthlyIncome,
+    } = body;
+
+    // Field Validations
+    if (fullName) {
+      if (fullName.trim().length < 2 || fullName.trim().length > 100) {
+        return apiError("Họ và tên phải từ 2 đến 100 ký tự", 400, "ERR_UI_048");
+      }
+    }
+
+    if (permanentAddress) {
+      if (permanentAddress.trim().length < 10 || permanentAddress.trim().length > 255) {
+        return apiError("Địa chỉ HKTT phải từ 10 đến 255 ký tự", 400, "ERR_UI_048");
+      }
+    }
+
+    if (identityCardDate) {
+      const issueDate = new Date(identityCardDate);
+      if (issueDate > new Date()) {
+        return apiError("Ngày cấp CCCD không thể lớn hơn ngày hiện tại", 400, "ERR_UI_048");
+      }
+    }
+
+    let encryptedCCCD: string | null = null;
+    let maskedCCCD: string | null = null;
+
+    if (identityCardNumber && !identityCardNumber.includes("*")) {
+      if (!/^[0-9]{12}$/.test(identityCardNumber)) {
+        return apiError("Số CCCD phải bao gồm đúng 12 chữ số theo chuẩn", 400, "ERR_UI_048");
+      }
+      encryptedCCCD = mockEncrypt(identityCardNumber);
+      maskedCCCD = maskCCCD(identityCardNumber);
+
+      // Check 409 Conflict: Duplicate CCCD in customer_profiles
+      const [duplicate] = await db
+        .select()
+        .from(customerProfiles)
+        .where(eq(customerProfiles.identityCardMasked, maskedCCCD))
+        .limit(1);
+
+      if (duplicate && duplicate.userId !== userId) {
+        return apiError("Số CCCD đã được đăng ký bởi một tài khoản khác trong hệ thống", 409, "ERR_UI_049");
+      }
+    }
 
     // Update users table
     const updateData: Record<string, any> = { updatedAt: new Date() };
-    if (fullName) updateData.fullName = fullName;
-    if (email) updateData.email = email;
+    if (fullName) updateData.fullName = fullName.trim();
+    if (email) updateData.email = email.trim();
+    if (showroomId) updateData.showroomId = showroomId;
 
     await db.update(users).set(updateData).where(eq(users.id, userId));
 
     // Upsert customer_profiles if CCCD data provided
-    if (identityCardNumber || permanentAddress || monthlyIncome) {
+    if (identityCardNumber || permanentAddress || monthlyIncome || identityCardDate || identityCardPlace) {
       const [existing] = await db
         .select()
         .from(customerProfiles)
@@ -70,14 +122,14 @@ export async function PUT(req: NextRequest) {
         .limit(1);
 
       const profileData: Record<string, any> = { updatedAt: new Date() };
-      if (identityCardNumber) {
-        profileData.identityCardNumber = mockEncrypt(identityCardNumber);
-        profileData.identityCardMasked = maskCCCD(identityCardNumber);
+      if (encryptedCCCD && maskedCCCD) {
+        profileData.identityCardNumber = encryptedCCCD;
+        profileData.identityCardMasked = maskedCCCD;
       }
       if (identityCardDate) profileData.identityCardDate = identityCardDate;
       if (identityCardPlace) profileData.identityCardPlace = identityCardPlace;
-      if (permanentAddress) profileData.permanentAddress = permanentAddress;
-      if (monthlyIncome) profileData.monthlyIncome = monthlyIncome;
+      if (permanentAddress) profileData.permanentAddress = permanentAddress.trim();
+      if (monthlyIncome !== undefined) profileData.monthlyIncome = String(monthlyIncome);
 
       if (existing) {
         await db.update(customerProfiles).set(profileData).where(eq(customerProfiles.userId, userId));
@@ -87,14 +139,14 @@ export async function PUT(req: NextRequest) {
           identityCardNumber: profileData.identityCardNumber || mockEncrypt("000000000000"),
           identityCardMasked: profileData.identityCardMasked || "00000000****",
           identityCardDate: profileData.identityCardDate || new Date().toISOString().split("T")[0],
-          identityCardPlace: profileData.identityCardPlace || "",
+          identityCardPlace: profileData.identityCardPlace || "Cục CSQLHC về TTXH",
           permanentAddress: profileData.permanentAddress || "",
-          monthlyIncome: profileData.monthlyIncome,
+          monthlyIncome: profileData.monthlyIncome || null,
         });
       }
     }
 
-    return apiSuccess({ message: "Profile updated successfully" });
+    return apiSuccess({ message: "Cập nhật hồ sơ cá nhân thành công!" });
   } catch (error) {
     return apiError("Internal server error", 500);
   }

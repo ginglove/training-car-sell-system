@@ -1,19 +1,22 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { User, Shield, Save, ArrowLeft, Lock, CheckCircle2, AlertCircle } from "lucide-react";
+import { User, Shield, Save, ArrowLeft, Lock, CheckCircle2, AlertCircle, Upload, Image as ImageIcon, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 
 export default function ProfilePage() {
   const router = useRouter();
   const { data: session } = useSession();
   const [profile, setProfile] = useState<any>(null);
+  const [showrooms, setShowrooms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profileMsg, setProfileMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -21,12 +24,16 @@ export default function ProfilePage() {
   const [form, setForm] = useState({
     fullName: "",
     email: "",
+    showroomId: "",
     identityCardNumber: "",
     identityCardDate: "",
     identityCardPlace: "",
     permanentAddress: "",
     monthlyIncome: "",
   });
+
+  const [cccdFront, setCccdFront] = useState<string | null>(null);
+  const [cccdBack, setCccdBack] = useState<string | null>(null);
 
   const [pwdForm, setPwdForm] = useState({
     currentPassword: "",
@@ -37,29 +44,71 @@ export default function ProfilePage() {
   const [pwdMsg, setPwdMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
-    fetch("/api/v1/users/profile")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.success) {
-          setProfile(d.data);
+    Promise.all([
+      fetch("/api/v1/users/profile").then((r) => r.json()),
+      fetch("/api/v1/showrooms").then((r) => r.json()),
+    ])
+      .then(([profileRes, showroomsRes]) => {
+        if (profileRes.success) {
+          setProfile(profileRes.data);
           setForm({
-            fullName: d.data.fullName || "",
-            email: d.data.email || "",
-            identityCardNumber: d.data.identityCardMasked || "",
-            identityCardDate: d.data.identityCardDate || "",
-            identityCardPlace: d.data.identityCardPlace || "",
-            permanentAddress: d.data.permanentAddress || "",
-            monthlyIncome: d.data.monthlyIncome || "",
+            fullName: profileRes.data.fullName || "",
+            email: profileRes.data.email || "",
+            showroomId: profileRes.data.showroomId || "",
+            identityCardNumber: profileRes.data.identityCardMasked || "",
+            identityCardDate: profileRes.data.identityCardDate || "",
+            identityCardPlace: profileRes.data.identityCardPlace || "Cục CSQLHC về TTXH",
+            permanentAddress: profileRes.data.permanentAddress || "",
+            monthlyIncome: profileRes.data.monthlyIncome || "",
           });
+        }
+        if (showroomsRes.success) {
+          setShowrooms(showroomsRes.data || []);
         }
       })
       .finally(() => setLoading(false));
   }, []);
 
+  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>, side: "front" | "back") {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (side === "front") setCccdFront(reader.result as string);
+        else setCccdBack(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
     setProfileMsg(null);
+
+    // Client-side validations
+    if (form.fullName.trim().length < 2 || form.fullName.trim().length > 100) {
+      setProfileMsg({ type: "error", text: "Họ và tên phải từ 2 đến 100 ký tự (ERR_UI_048)" });
+      return;
+    }
+
+    if (form.identityCardNumber && !form.identityCardNumber.includes("*")) {
+      if (!/^[0-9]{12}$/.test(form.identityCardNumber)) {
+        setProfileMsg({ type: "error", text: "Số CCCD phải đủ 12 chữ số chuẩn (ERR_UI_048)" });
+        return;
+      }
+    }
+
+    if (form.identityCardDate && new Date(form.identityCardDate) > new Date()) {
+      setProfileMsg({ type: "error", text: "Ngày cấp CCCD không thể vượt quá ngày hiện tại (ERR_UI_048)" });
+      return;
+    }
+
+    if (form.permanentAddress && (form.permanentAddress.trim().length < 10 || form.permanentAddress.trim().length > 255)) {
+      setProfileMsg({ type: "error", text: "Địa chỉ HKTT phải từ 10 đến 255 ký tự (ERR_UI_048)" });
+      return;
+    }
+
+    setSaving(true);
     try {
       const res = await fetch("/api/v1/users/profile", {
         method: "PUT",
@@ -68,12 +117,12 @@ export default function ProfilePage() {
       });
       const data = await res.json();
       if (data.success) {
-        setProfileMsg({ type: "success", text: "Cap nhat ho so ca nhan thanh cong!" });
+        setProfileMsg({ type: "success", text: "Cập nhật hồ sơ cá nhân thành công!" });
       } else {
-        setProfileMsg({ type: "error", text: data.error || "Cap nhat ho so thất bại" });
+        setProfileMsg({ type: "error", text: data.error || "Cập nhật hồ sơ thất bại" });
       }
     } catch {
-      setProfileMsg({ type: "error", text: "Loi ket noi server" });
+      setProfileMsg({ type: "error", text: "Lỗi kết nối máy chủ" });
     } finally {
       setSaving(false);
     }
@@ -84,7 +133,7 @@ export default function ProfilePage() {
     setPwdMsg(null);
 
     if (pwdForm.newPassword !== pwdForm.confirmPassword) {
-      setPwdMsg({ type: "error", text: "Mat khau moi va xac nhan mat khau khong trung khớp" });
+      setPwdMsg({ type: "error", text: "Mật khẩu mới và xác nhận mật khẩu không trùng khớp" });
       return;
     }
 
@@ -100,13 +149,13 @@ export default function ProfilePage() {
       });
       const data = await res.json();
       if (data.success) {
-        setPwdMsg({ type: "success", text: "Doi mat khau thanh cong!" });
+        setPwdMsg({ type: "success", text: "Đổi mật khẩu tài khoản thành công!" });
         setPwdForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
       } else {
-        setPwdMsg({ type: "error", text: data.error || "Doi mat khau that bai" });
+        setPwdMsg({ type: "error", text: data.error || "Đổi mật khẩu thất bại" });
       }
     } catch {
-      setPwdMsg({ type: "error", text: "Loi ket noi server" });
+      setPwdMsg({ type: "error", text: "Lỗi kết nối máy chủ" });
     } finally {
       setPwdSaving(false);
     }
@@ -117,130 +166,228 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6">
       <Button variant="ghost" onClick={() => router.back()} className="mb-2">
         <ArrowLeft className="h-4 w-4 mr-2" />
-        Quay lai
+        Quay lại
       </Button>
 
-      <h1 className="text-2xl font-bold flex items-center gap-2">
-        <User className="h-6 w-6" />
-        Thong tin tai khoan & Ho so phap ly (SCR-00-PROF)
-      </h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <User className="h-6 w-6 text-primary" />
+          Thông Tin Tài Khoản & Hồ Sơ Pháp Lý (SCR-00-PROF)
+        </h1>
+        {profile?.role && (
+          <Badge variant="outline" className="text-sm px-3 py-1 font-semibold">
+            Role: {profile.role}
+          </Badge>
+        )}
+      </div>
 
       <form onSubmit={handleSave} className="space-y-6">
         {profileMsg && (
-          <div className={`p-3 rounded-lg border flex items-center gap-2 text-sm ${
+          <div className={`p-4 rounded-lg border flex items-center gap-3 text-sm font-medium ${
             profileMsg.type === "success" ? "bg-green-50 border-green-200 text-green-700" : "bg-red-50 border-red-200 text-red-700"
           }`}>
-            {profileMsg.type === "success" ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+            {profileMsg.type === "success" ? <CheckCircle2 className="h-5 w-5 shrink-0" /> : <AlertCircle className="h-5 w-5 shrink-0" />}
             <span>{profileMsg.text}</span>
           </div>
         )}
 
         <div className="grid md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Thong tin lien he</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Ho va ten</Label>
-                <Input
-                  value={form.fullName}
-                  onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>So dien thoai</Label>
-                <Input value={session?.user?.phone || ""} disabled />
-                <p className="text-xs text-muted-foreground">Da xac thuc qua OTP</p>
-              </div>
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Shield className="h-4 w-4" />
-                Ho so CCCD & Thu nhập
+          {/* Card 1: Basic Contact Info */}
+          <Card className="shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <User className="h-4 w-4 text-primary" />
+                1. Thông Tin Liên Hệ Cơ Bản
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>So CCCD</Label>
+                <Label>Họ và tên (*)</Label>
+                <Input
+                  value={form.fullName}
+                  onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+                  placeholder="Nguyễn Văn A"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Số điện thoại</Label>
+                <div className="relative">
+                  <Input value={session?.user?.phone || profile?.phone || ""} disabled className="bg-slate-100 dark:bg-slate-800" />
+                  <span className="absolute right-3 top-2.5 text-xs text-emerald-600 font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> (Đã xác thực)
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Email nhận thông báo (*)</Label>
+                <Input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  placeholder="nguyenvana@gmail.com"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1">
+                  <Store className="h-3.5 w-3.5 text-slate-500" />
+                  Showroom quen thuộc
+                </Label>
+                <select
+                  value={form.showroomId}
+                  onChange={(e) => setForm({ ...form, showroomId: e.target.value })}
+                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">-- Chọn Showroom mua bán / lái thử --</option>
+                  {showrooms.map((sr) => (
+                    <option key={sr.id} value={sr.id}>
+                      {sr.name} ({sr.city || "Việt Nam"})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Card 2: CCCD & Legal Profile */}
+          <Card className="shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Shield className="h-4 w-4 text-primary" />
+                2. Hồ Sơ Căn Cước Công Dân (CCCD)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Số CCCD (*)</Label>
                 <Input
                   value={form.identityCardNumber}
                   onChange={(e) => setForm({ ...form, identityCardNumber: e.target.value })}
                   placeholder="001200001234"
                   maxLength={12}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Ma hoa AES-256 qua KMS (100% masking dạng 00120000****)
+                <p className="text-[11px] text-muted-foreground">
+                  Mã hóa AES-256 qua Mock KMS (Masking UI: 00120000****)
                 </p>
               </div>
-              <div className="space-y-2">
-                <Label>Ngay cap</Label>
-                <Input
-                  type="date"
-                  value={form.identityCardDate}
-                  onChange={(e) => setForm({ ...form, identityCardDate: e.target.value })}
-                />
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Ngày cấp (*)</Label>
+                  <Input
+                    type="date"
+                    value={form.identityCardDate}
+                    onChange={(e) => setForm({ ...form, identityCardDate: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Nơi cấp (*)</Label>
+                  <Input
+                    value={form.identityCardPlace}
+                    onChange={(e) => setForm({ ...form, identityCardPlace: e.target.value })}
+                    placeholder="Cục CSQLHC về TTXH"
+                  />
+                </div>
               </div>
+
               <div className="space-y-2">
-                <Label>Noi cap</Label>
-                <Input
-                  value={form.identityCardPlace}
-                  onChange={(e) => setForm({ ...form, identityCardPlace: e.target.value })}
-                  placeholder="Cuc CSQLHC ve TTXH"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Dia chi HKTT</Label>
-                <Input
+                <Label>Địa chỉ HKTT (*)</Label>
+                <textarea
                   value={form.permanentAddress}
                   onChange={(e) => setForm({ ...form, permanentAddress: e.target.value })}
-                  placeholder="So nha, Duong, Phuong/Xa, Quan/Huyen..."
+                  rows={2}
+                  className="w-full p-2 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Số 12 Đường Cầu Giấy, Phường Quan Hoa, Quận Cầu Giấy, Hà Nội"
                 />
               </div>
+
               <div className="space-y-2">
-                <Label>Thu nhap hang thang (VND)</Label>
+                <Label>Thu nhập hàng tháng (VNĐ)</Label>
                 <Input
                   type="number"
                   value={form.monthlyIncome}
                   onChange={(e) => setForm({ ...form, monthlyIncome: e.target.value })}
                   placeholder="30000000"
                 />
-                <p className="text-xs text-muted-foreground">Phuc vu duyet vay ngan hang tu dong</p>
+                <p className="text-[11px] text-muted-foreground">Phục vụ tự động xét duyệt hạn mức vay ngân hàng</p>
+              </div>
+
+              {/* CCCD Front and Back Document Uploads */}
+              <div className="space-y-2 pt-1">
+                <Label className="text-xs font-semibold">Ảnh Giấy Tờ CCCD Legal:</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="border border-dashed rounded-lg p-3 text-center bg-slate-50 dark:bg-slate-900 flex flex-col items-center justify-center min-h-[90px] relative">
+                    {cccdFront ? (
+                      <img src={cccdFront} alt="CCCD Mặt Trước" className="h-16 object-cover rounded" />
+                    ) : (
+                      <>
+                        <ImageIcon className="h-6 w-6 text-slate-400 mb-1" />
+                        <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Mặt trước</span>
+                      </>
+                    )}
+                    <label className="mt-1 cursor-pointer">
+                      <span className="text-[10px] text-primary underline flex items-center gap-1">
+                        <Upload className="h-3 w-3" /> Tải ảnh
+                      </span>
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, "front")} />
+                    </label>
+                  </div>
+
+                  <div className="border border-dashed rounded-lg p-3 text-center bg-slate-50 dark:bg-slate-900 flex flex-col items-center justify-center min-h-[90px] relative">
+                    {cccdBack ? (
+                      <img src={cccdBack} alt="CCCD Mặt Sau" className="h-16 object-cover rounded" />
+                    ) : (
+                      <>
+                        <ImageIcon className="h-6 w-6 text-slate-400 mb-1" />
+                        <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Mặt sau</span>
+                      </>
+                    )}
+                    <label className="mt-1 cursor-pointer">
+                      <span className="text-[10px] text-primary underline flex items-center gap-1">
+                        <Upload className="h-3 w-3" /> Tải ảnh
+                      </span>
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, "back")} />
+                    </label>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <Button type="submit" disabled={saving} className="w-full" size="lg">
-          <Save className="h-4 w-4 mr-2" />
-          {saving ? "Dang luu..." : "Luu thay doi ho so"}
-        </Button>
+        {/* Mascot Notice & Save Button */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🦊</span>
+            <div className="text-xs text-amber-900 dark:text-amber-200">
+              <span className="font-bold">Mascot Cáo Bảo Mật:</span> Thông tin CCCD và thu nhập cá nhân của bạn được mã hóa bảo vệ tuyệt đối qua AWS KMS (mã hóa chuẩn mã hóa AES-256-GCM).
+            </div>
+          </div>
+          <Button type="submit" disabled={saving} size="lg" className="w-full sm:w-auto px-8 shrink-0">
+            <Save className="h-4 w-4 mr-2" />
+            {saving ? "Đang lưu..." : "LƯU THAY ĐỔI HỒ SƠ"}
+          </Button>
+        </div>
       </form>
 
-      <Separator className="my-6" />
+      <Separator className="my-8" />
 
-      <Card>
+      {/* Change Password Card */}
+      <Card className="shadow-sm">
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Lock className="h-4 w-4" />
-            Doi mat khau tai khoan
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <Lock className="h-4 w-4 text-primary" />
+            Đổi Mật Khẩu Tài Khoản
           </CardTitle>
-          <CardDescription>Mat khau toi thieu 8 ky tu, bao gom chu hoa va chu so</CardDescription>
+          <CardDescription>Mật khẩu tối thiểu 8 ký tự, bao gồm ít nhất 1 chữ hoa và 1 chữ số</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
@@ -253,7 +400,7 @@ export default function ProfilePage() {
               </div>
             )}
             <div className="space-y-2">
-              <Label>Mat khau hien tai</Label>
+              <Label>Mật khẩu hiện tại (*)</Label>
               <Input
                 type="password"
                 value={pwdForm.currentPassword}
@@ -262,7 +409,7 @@ export default function ProfilePage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Mat khau moi</Label>
+              <Label>Mật khẩu mới (*)</Label>
               <Input
                 type="password"
                 value={pwdForm.newPassword}
@@ -271,7 +418,7 @@ export default function ProfilePage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Xac nhan mat khau moi</Label>
+              <Label>Xác nhận mật khẩu mới (*)</Label>
               <Input
                 type="password"
                 value={pwdForm.confirmPassword}
@@ -281,7 +428,7 @@ export default function ProfilePage() {
             </div>
             <Button type="submit" disabled={pwdSaving}>
               <Lock className="h-4 w-4 mr-2" />
-              {pwdSaving ? "Dang cap nhat..." : "Cap nhat mat khau"}
+              {pwdSaving ? "Đang cập nhật..." : "Cập nhật mật khẩu"}
             </Button>
           </form>
         </CardContent>
