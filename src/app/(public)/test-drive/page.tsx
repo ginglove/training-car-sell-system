@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Calendar, Clock, MapPin, Car, Phone, User } from "lucide-react";
@@ -17,7 +17,7 @@ interface Slot {
   isBooked: boolean;
 }
 
-export default function TestDrivePage() {
+function TestDriveContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { data: session } = useSession();
@@ -223,5 +223,13 @@ export default function TestDrivePage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function TestDrivePage() {
+  return (
+    <Suspense fallback={<div className="text-center py-8">Loading...</div>}>
+      <TestDriveContent />
+    </Suspense>
   );
 }

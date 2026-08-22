@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (status) {
-      conditions.push(eq(crmLeads.leadStatus, status));
+      conditions.push(eq(crmLeads.leadStatus, status as any));
     }
 
     if (search) {

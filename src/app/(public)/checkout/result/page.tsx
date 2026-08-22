@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle, XCircle, AlertTriangle, Clock } from "lucide-react";
@@ -38,7 +39,7 @@ const STATUS_CONFIG: Record<string, {
   },
 };
 
-export default function PaymentResultPage() {
+function PaymentResultContent() {
   const searchParams = useSearchParams();
   const status = searchParams.get("status") || "FAILED";
   const orderId = searchParams.get("orderId");
@@ -76,5 +77,13 @@ export default function PaymentResultPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function PaymentResultPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-8">Loading...</div>}>
+      <PaymentResultContent />
+    </Suspense>
   );
 }

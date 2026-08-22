@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (status) {
-      conditions.push(eq(vehicles.status, status));
+      conditions.push(eq(vehicles.status, status as any));
     }
 
     if (session.user.role === "SALE") {

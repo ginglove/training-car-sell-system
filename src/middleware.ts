@@ -11,7 +11,7 @@ const protectedRoutes: Record<string, string[]> = {
 };
 
 const adminOnlyRoutes = ["/portal/users", "/portal/config", "/portal/audit-logs"];
-const managerRoutes = ["/portal/inventory"];
+const managerRoutes = ["/portal/inventory", "/portal/transfers", "/portal/refunds"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

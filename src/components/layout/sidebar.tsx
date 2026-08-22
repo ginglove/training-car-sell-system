@@ -7,25 +7,24 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Users,
-  Car,
   Settings,
   FileText,
   Kanban,
-  BadgePercent,
   Warehouse,
   Truck,
   Shield,
+  ReceiptText,
 } from "lucide-react";
 
 const menuItems = [
   { href: "/portal/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["ADMIN", "MANAGER", "SALE"] },
   { href: "/portal/crm", label: "CRM Leads", icon: Kanban, roles: ["ADMIN", "MANAGER", "SALE"] },
-  { href: "/portal/discounts", label: "Chiet khau", icon: BadgePercent, roles: ["ADMIN", "MANAGER", "SALE"] },
+  { href: "/portal/refunds", label: "Duyệt hoàn cọc", icon: ReceiptText, roles: ["ADMIN", "MANAGER"] },
   { href: "/portal/inventory", label: "Kho xe", icon: Warehouse, roles: ["ADMIN", "MANAGER"] },
-  { href: "/portal/inventory/transfers", label: "Dieu chuyen kho", icon: Truck, roles: ["ADMIN", "MANAGER"] },
-  { href: "/portal/users", label: "Quan tri Users", icon: Users, roles: ["ADMIN"] },
-  { href: "/portal/config", label: "Cau hinh", icon: Settings, roles: ["ADMIN"] },
-  { href: "/portal/audit-logs", label: "Nhat ky", icon: FileText, roles: ["ADMIN"] },
+  { href: "/portal/transfers", label: "Điều chuyển kho", icon: Truck, roles: ["ADMIN", "MANAGER"] },
+  { href: "/portal/users", label: "Quản trị Users", icon: Users, roles: ["ADMIN"] },
+  { href: "/portal/config", label: "Cấu hình", icon: Settings, roles: ["ADMIN"] },
+  { href: "/portal/audit-logs", label: "Nhật ký kiểm toán", icon: FileText, roles: ["ADMIN"] },
 ];
 
 export function Sidebar() {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { CreditCard, Shield, Clock, Car, Plus, Check } from "lucide-react";
@@ -20,7 +20,7 @@ const ACCESSORIES = [
   { id: "coating", name: "Phu Ceramic", price: 8000000 },
 ];
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { data: session } = useSession();
@@ -264,5 +264,13 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-8">Loading checkout...</div>}>
+      <CheckoutContent />
+    </Suspense>
   );
 }

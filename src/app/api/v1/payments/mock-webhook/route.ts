@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       .update(payments)
       .set({
         receivedAmount: String(receivedAmount),
-        paymentStatus,
+        paymentStatus: paymentStatus as any,
         gatewayTransactionNo: `GW-${Date.now()}`,
         gatewayResponseCode: result === "SUCCESS" ? "00" : "99",
         gatewayBankCode: "MOCK_BANK",
@@ -76,13 +76,13 @@ export async function POST(request: NextRequest) {
     if (order) {
       await db
         .update(orders)
-        .set({ status: orderStatus, updatedAt: new Date() })
+        .set({ status: orderStatus as any, updatedAt: new Date() })
         .where(eq(orders.id, payment.orderId));
 
       await db.insert(orderStatusHistory).values({
         orderId: payment.orderId,
         oldStatus: order.status,
-        newStatus: orderStatus,
+        newStatus: orderStatus as any,
         actorType: "PAYMENT_GATEWAY",
         correlationId: transactionRef,
         reason: `Mock payment ${result}`,
