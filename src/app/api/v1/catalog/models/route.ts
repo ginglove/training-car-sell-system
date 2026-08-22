@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const bodyType = searchParams.get("bodyType");
     const priceRange = searchParams.get("priceRange");
+    const purpose = searchParams.get("purpose");
     const search = searchParams.get("search");
 
     const conditions: any[] = [];
@@ -17,17 +18,30 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(vehicleModels.bodyType, bodyType));
     }
 
+    if (purpose && purpose !== "all") {
+      if (purpose === "FAMILY") {
+        conditions.push(sql`${vehicleModels.bodyType} IN ('MPV', 'SUV')`);
+      } else if (purpose === "CITY") {
+        conditions.push(sql`${vehicleModels.bodyType} IN ('Hatchback', 'CUV', 'Sedan')`);
+      } else if (purpose === "HIGHWAY") {
+        conditions.push(sql`${vehicleModels.bodyType} IN ('SUV', 'Sedan', 'Pickup')`);
+      } else if (purpose === "BUDGET") {
+        conditions.push(sql`CAST(${vehicleVariants.listedPrice} AS NUMERIC) <= 1000000000`);
+      }
+    }
+
     if (priceRange && priceRange !== "all") {
       const ranges: Record<string, [number, number]> = {
         under500: [0, 500000000],
+        under1000: [0, 1000000000],
         "500to1000": [500000000, 1000000000],
         "1000to1500": [1000000000, 1500000000],
-        above1500: [1500000000, 99999999999],
+        above1500: [1500000000, 999999999999],
       };
       const range = ranges[priceRange];
       if (range) {
-        conditions.push(gte(vehicleVariants.listedPrice, String(range[0])));
-        conditions.push(lte(vehicleVariants.listedPrice, String(range[1])));
+        conditions.push(sql`CAST(${vehicleVariants.listedPrice} AS NUMERIC) >= ${range[0]}`);
+        conditions.push(sql`CAST(${vehicleVariants.listedPrice} AS NUMERIC) <= ${range[1]}`);
       }
     }
 

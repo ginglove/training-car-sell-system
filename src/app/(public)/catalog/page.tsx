@@ -129,8 +129,13 @@ function CatalogContent() {
                 key={item.id}
                 type="button"
                 onClick={() => {
-                  setPurpose(item.id);
-                  if (item.id === "BUDGET") setPriceRange("under500");
+                  if (purpose === item.id) {
+                    setPurpose("all");
+                    if (item.id === "BUDGET") setPriceRange("all");
+                  } else {
+                    setPurpose(item.id);
+                    if (item.id === "BUDGET") setPriceRange("under1000");
+                  }
                 }}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
                   purpose === item.id
@@ -173,6 +178,7 @@ function CatalogContent() {
           <SelectContent>
             <SelectItem value="all">Tất cả mức giá</SelectItem>
             <SelectItem value="under500">Dưới 500 Triệu</SelectItem>
+            <SelectItem value="under1000">Dưới 1 Tỷ</SelectItem>
             <SelectItem value="500to1000">500 Triệu - 1 Tỷ</SelectItem>
             <SelectItem value="1000to1500">1 Tỷ - 1.5 Tỷ</SelectItem>
             <SelectItem value="above1500">Trên 1.5 Tỷ</SelectItem>

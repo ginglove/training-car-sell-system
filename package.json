@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node -e \"['.next', '.netlify/functions-internal', '.netlify/edge-functions'].forEach(d => require('fs').rmSync(d, { recursive: true, force: true }))\" && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "db:generate": "drizzle-kit generate",
