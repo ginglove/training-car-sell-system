@@ -1,59 +1,31 @@
-import { auth } from "@/lib/auth/config";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-const protectedRoutes: Record<string, string[]> = {
-  "/portal": ["ADMIN", "MANAGER", "SALE"],
-  "/profile": ["ADMIN", "MANAGER", "SALE", "CUSTOMER"],
-  "/orders": ["CUSTOMER", "SALE", "ADMIN", "MANAGER"],
-  "/checkout": ["CUSTOMER", "SALE", "ADMIN", "MANAGER"],
-  "/test-drive": ["CUSTOMER", "SALE", "ADMIN", "MANAGER"],
-};
+const protectedRoutes = ["/portal", "/profile", "/orders", "/checkout", "/test-drive"];
 
-const adminOnlyRoutes = ["/portal/users", "/portal/config", "/portal/audit-logs"];
-const managerRoutes = ["/portal/inventory", "/portal/transfers", "/portal/refunds"];
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
 
-export default auth((req) => {
-  const { pathname } = req.nextUrl;
-  const session = req.auth;
+  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
 
-  if (
-    pathname.startsWith("/api") ||
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/login") ||
-    pathname === "/" ||
-    pathname.startsWith("/catalog")
-  ) {
+  if (!isProtectedRoute) {
     return NextResponse.next();
   }
 
-  if (!session || !session.user) {
-    const loginUrl = new URL("/login", req.url);
+  const hasSessionCookie =
+    request.cookies.has("authjs.session-token") ||
+    request.cookies.has("__Secure-authjs.session-token") ||
+    request.cookies.has("next-auth.session-token") ||
+    request.cookies.has("__Secure-next-auth.session-token");
+
+  if (!hasSessionCookie) {
+    const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  const role = (session.user as any).role as string;
-
-  for (const route of adminOnlyRoutes) {
-    if (pathname.startsWith(route) && role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-  }
-
-  for (const route of managerRoutes) {
-    if (pathname.startsWith(route) && !["ADMIN", "MANAGER"].includes(role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-  }
-
-  for (const [route, roles] of Object.entries(protectedRoutes)) {
-    if (pathname.startsWith(route) && !roles.includes(role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-  }
-
   return NextResponse.next();
-});
+}
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|images|fonts).*)"],
