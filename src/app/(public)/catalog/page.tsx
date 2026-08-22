@@ -308,10 +308,10 @@ function CatalogContent() {
                 {/* ROLE: CUSTOMER / GUEST */}
                 {(userRole === "GUEST" || userRole === "CUSTOMER") && (
                   <div className="grid grid-cols-2 gap-2 pt-2">
-                    <Button variant="outline" size="sm" onClick={() => router.push(`/test-drive?variantId=${vehicle.id}`)}>
+                    <Button variant="outline" size="sm" onClick={() => router.push(`/test-drive?variant_id=${vehicle.id}`)}>
                       <Calendar className="h-3.5 w-3.5 mr-1" /> Lái Thử
                     </Button>
-                    <Button size="sm" onClick={() => router.push(`/checkout?variantId=${vehicle.id}`)}>
+                    <Button size="sm" onClick={() => router.push(`/checkout?variant_id=${vehicle.id}`)}>
                       Đặt Cọc Ngay
                     </Button>
                   </div>
@@ -325,10 +325,10 @@ function CatalogContent() {
                       <Badge variant="outline" className="text-[9px]">Sale Mode</Badge>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      <Button variant="outline" size="sm" onClick={() => router.push(`/test-drive?variantId=${vehicle.id}`)}>
+                      <Button variant="outline" size="sm" onClick={() => router.push(`/test-drive?variant_id=${vehicle.id}`)}>
                         <Calendar className="h-3.5 w-3.5 mr-1" /> Đặt Lái Thử
                       </Button>
-                      <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => router.push(`/checkout?variantId=${vehicle.id}&mode=sale`)}>
+                      <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => router.push(`/checkout?variant_id=${vehicle.id}&mode=sale`)}>
                         <UserCheck className="h-3.5 w-3.5 mr-1" /> Tạo Đơn Cọc Hộ
                       </Button>
                     </div>
@@ -346,7 +346,7 @@ function CatalogContent() {
                       <Button variant="outline" size="sm" className="border-purple-300 text-purple-700 hover:bg-purple-50" onClick={() => handleHoldVin(vehicle.variantName)}>
                         <Lock className="h-3.5 w-3.5 mr-1" /> Hold VIN 24h
                       </Button>
-                      <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white" onClick={() => router.push(`/checkout?variantId=${vehicle.id}&mode=manager`)}>
+                      <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white" onClick={() => router.push(`/checkout?variant_id=${vehicle.id}&mode=manager`)}>
                         <UserCheck className="h-3.5 w-3.5 mr-1" /> Đặt Cọc Hộ
                       </Button>
                     </div>
@@ -364,7 +364,7 @@ function CatalogContent() {
                       <Button variant="outline" size="sm" onClick={() => router.push(`/inventory`)}>
                         <Settings className="h-3.5 w-3.5 mr-1" /> Quản Lý Quota
                       </Button>
-                      <Button size="sm" className="bg-slate-900 text-white" onClick={() => router.push(`/checkout?variantId=${vehicle.id}`)}>
+                      <Button size="sm" className="bg-slate-900 text-white" onClick={() => router.push(`/checkout?variant_id=${vehicle.id}`)}>
                         Đặt Cọc Xe
                       </Button>
                     </div>

@@ -30,7 +30,7 @@ function TestDriveContent() {
   const [variants, setVariants] = useState<any[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [selectedShowroom, setSelectedShowroom] = useState("");
-  const [selectedVariant, setSelectedVariant] = useState(searchParams.get("variant_id") || "");
+  const [selectedVariant, setSelectedVariant] = useState(searchParams.get("variant_id") || searchParams.get("variantId") || "");
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
   const [selectedSlot, setSelectedSlot] = useState("");
   const [driverName, setDriverName] = useState(session?.user?.name || "Nguyễn Văn Tuấn");

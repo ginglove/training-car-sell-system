@@ -24,7 +24,7 @@ function CheckoutContent() {
   const router = useRouter();
   const { data: session } = useSession();
 
-  const variantId = searchParams.get("variant_id") || "";
+  const variantId = searchParams.get("variant_id") || searchParams.get("variantId") || "";
   const color = searchParams.get("color") || "";
   const initialAccessories = searchParams.get("accessories")?.split(",").filter(Boolean) || [];
 
