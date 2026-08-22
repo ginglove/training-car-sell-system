@@ -8,12 +8,12 @@ export async function POST(request: NextRequest) {
     const { phone } = body;
 
     if (!phone) {
-      return apiError("Phone number is required", 400, "ERR_UI_031");
+      return apiError("Vui lòng nhập số điện thoại", 400, "ERR_UI_031");
     }
 
     const phoneRegex = /^(0|84)[3|5|7|8|9][0-9]{8}$/;
     if (!phoneRegex.test(phone)) {
-      return apiError("Invalid phone number format", 400, "ERR_UI_031");
+      return apiError("Định dạng số điện thoại không hợp lệ (Ví dụ: 0912345678)", 400, "ERR_UI_031");
     }
 
     const result = sendMockOTP(phone);

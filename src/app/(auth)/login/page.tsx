@@ -100,23 +100,56 @@ function LoginContent() {
   }
 
   async function handleSendOTP() {
-    if (!otpPhone) return;
-    setOtpSent(true);
-    setCountdown(60);
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
+    setError("");
+    if (!otpPhone) {
+      setError("Vui lòng nhập số điện thoại nhận mã OTP");
+      return;
+    }
+
+    const phoneRegex = /^(0|84)[3|5|7|8|9][0-9]{8}$/;
+    if (!phoneRegex.test(otpPhone)) {
+      setError("Định dạng số điện thoại không hợp lệ (Ví dụ: 0912345678)");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/v1/auth/otp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: otpPhone }),
       });
-    }, 1000);
+      const data = await res.json();
+      if (data.success) {
+        setOtpSent(true);
+        setCountdown(60);
+        setError("");
+        const timer = setInterval(() => {
+          setCountdown((prev) => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      } else {
+        setError(data.error || "Gửi mã OTP thất bại");
+      }
+    } catch {
+      setError("Lỗi kết nối máy chủ khi gửi OTP");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleOTPLogin(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    if (!otpCode || otpCode.length < 6) {
+      setError("Vui lòng nhập đủ 6 chữ số mã OTP");
+      return;
+    }
     setLoading(true);
 
     const result = await signIn("credentials", {
@@ -129,11 +162,13 @@ function LoginContent() {
     setLoading(false);
 
     if (result?.error) {
-      setError(
-        result.error === "ERR_UI_005"
-          ? "Ma OTP khong hop le hoac da het han."
-          : "Dang nhap that bai."
-      );
+      if (result.error === "ERR_UI_005") {
+        setError("Mã OTP không hợp lệ hoặc đã hết hạn (Sandbox: 888888).");
+      } else if (result.error === "ERR_UI_004") {
+        setError("Tài khoản tạm thời bị khóa 30 phút do đăng nhập sai quá nhiều lần.");
+      } else {
+        setError("Số điện thoại chưa được đăng ký trong hệ thống hoặc không chính xác.");
+      }
     } else {
       router.push(redirect);
       router.refresh();
