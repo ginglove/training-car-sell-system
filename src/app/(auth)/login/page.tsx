@@ -83,11 +83,16 @@ function LoginContent() {
 
     if (result?.error) {
       const errorMap: Record<string, string> = {
-        ERR_UI_003: "Sai thong tin dang nhap. Vui long thu lai.",
-        ERR_UI_004: "Tai khoan bi khoa 30 phut do nhap sai qua nhieu.",
-        CredentialsSignin: "Sai thong tin dang nhap.",
+        ERR_UI_003: "Sai thông tin đăng nhập. Mật khẩu không chính xác.",
+        ERR_UI_004: "Tài khoản tạm thời bị khóa 30 phút do nhập sai mật khẩu quá 5 lần.",
+        CredentialsSignin: "Sai thông tin đăng nhập. Mật khẩu hoặc Email/SĐT không đúng.",
       };
-      setError(errorMap[result.error] || "Dang nhap that bai.");
+      const errorMsg = errorMap[result.error] || (
+        result.error.includes("ERR_UI_004")
+          ? "Tài khoản tạm thời bị khóa 30 phút do nhập sai mật khẩu quá 5 lần."
+          : "Sai thông tin đăng nhập. Mật khẩu hoặc Email/SĐT không đúng."
+      );
+      setError(errorMsg);
     } else {
       router.push(redirect);
       router.refresh();
@@ -298,7 +303,7 @@ function LoginContent() {
                       onChange={(e) => setRememberMe(e.target.checked)}
                       className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer"
                     />
-                    <span>Ghi nhom dang nhap</span>
+                    <span>Ghi nhớ đăng nhập</span>
                   </label>
                   <button
                     type="button"
