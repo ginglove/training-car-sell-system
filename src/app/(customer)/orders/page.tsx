@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Package, ChevronRight, Clock, Car, ArrowLeft } from "lucide-react";
+import { Package, ChevronRight, Clock, Car, ArrowLeft, CheckCircle2, ShoppingBag } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ interface Order {
   orderCode: string;
   status: string;
   variantName: string;
+  modelName?: string;
   brandName: string;
   selectedColor: string;
   finalPrice: number;
@@ -43,57 +44,70 @@ export default function OrdersPage() {
   useEffect(() => {
     fetch("/api/v1/orders/my")
       .then((r) => r.json())
-      .then((d) => { if (d.success) setOrders(d.data); })
+      .then((d) => {
+        if (d.success && d.data) {
+          setOrders(d.data);
+        }
+      })
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div className="max-w-3xl mx-auto space-y-4 py-6">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-32 bg-muted rounded animate-pulse" />
+          <div key={i} className="h-32 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse" />
         ))}
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto py-6">
       <Button variant="ghost" onClick={() => router.back()} className="mb-4">
         <ArrowLeft className="h-4 w-4 mr-2" />
-        Quay lai
+        Quay lại
       </Button>
 
       <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
-        <Package className="h-6 w-6" />
-        Don hang cua toi
+        <Package className="h-6 w-6 text-primary" />
+        Đơn hàng của tôi
       </h1>
 
       {orders.length === 0 ? (
-        <div className="text-center py-16">
-          <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-medium mb-2">Chua co don hang nao</h3>
-          <Link href="/catalog" className="text-primary hover:underline">
-            Kham pha danh muc xe
+        <div className="text-center py-16 bg-slate-50 dark:bg-slate-900 rounded-2xl border shadow-sm space-y-4">
+          <ShoppingBag className="h-16 w-16 mx-auto text-muted-foreground/40" />
+          <h3 className="text-lg font-medium">Chưa có đơn hàng nào</h3>
+          <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+            Bạn chưa thực hiện đơn đặt cọc mua xe nào. Hãy khám phá danh mục sản phẩm xe mới nhất ngay!
+          </p>
+          <Link href="/catalog">
+            <Button className="mt-2 font-semibold">
+              <Car className="h-4 w-4 mr-2" />
+              Khám phá danh mục xe
+            </Button>
           </Link>
         </div>
       ) : (
         <div className="space-y-4">
           {orders.map((order) => (
             <Link key={order.id} href={`/orders/${order.id}`}>
-              <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                <CardContent className="p-4 flex items-center justify-between">
+              <Card className="hover:shadow-lg transition-all duration-300 cursor-pointer border group">
+                <CardContent className="p-5 flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="h-16 w-16 bg-muted rounded-lg flex items-center justify-center">
-                      <Car className="h-8 w-8 text-muted-foreground" />
+                    <div className="h-16 w-16 bg-primary/10 rounded-xl flex items-center justify-center text-primary shrink-0 group-hover:scale-105 transition-transform">
+                      <Car className="h-8 w-8" />
                     </div>
-                    <div>
-                      <p className="font-semibold">{order.brandName} - {order.variantName}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {order.orderCode} | Mau: {order.selectedColor}
+                    <div className="space-y-1">
+                      <p className="font-bold text-base group-hover:text-primary transition-colors">
+                        {order.brandName} {order.modelName ? `${order.modelName} - ` : ""}{order.variantName}
                       </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant={(STATUS_COLORS[order.status] as any) || "default"}>
+                      <p className="text-xs text-muted-foreground">
+                        Mã đơn: <span className="font-mono font-medium text-foreground">{order.orderCode}</span> | Màu sơn: <span className="font-medium text-foreground">{order.selectedColor}</span>
+                      </p>
+                      <div className="flex items-center gap-2 pt-1">
+                        <Badge variant={(STATUS_COLORS[order.status] as any) || "default"} className="text-xs font-semibold px-2 py-0.5">
                           {ORDER_STATUS_LABELS[order.status as keyof typeof ORDER_STATUS_LABELS] || order.status}
                         </Badge>
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -103,14 +117,15 @@ export default function OrdersPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="text-right flex items-center gap-2">
+
+                  <div className="text-right flex items-center gap-3 shrink-0">
                     <div>
-                      <p className="font-bold text-primary">{formatVND(order.finalPrice)}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Coc: {formatVND(order.depositAmount)}
+                      <p className="font-bold text-lg text-primary">{formatVND(order.finalPrice)}</p>
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                        Đã cọc: {formatVND(order.depositAmount)}
                       </p>
                     </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                   </div>
                 </CardContent>
               </Card>

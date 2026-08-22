@@ -43,13 +43,17 @@ C_ERROR     = RGBColor(0x99, 0x14, 0x0A)   # Red for error
 C_WARN      = RGBColor(0x92, 0x40, 0x09)   # Orange for warning
 C_NOTE      = RGBColor(0x1E, 0x40, 0xAF)   # Blue for notes
 
+def rgb_hex(rgb: RGBColor) -> str:
+    # RGBColor stores as a 6-digit hex string internally
+    return str(rgb).upper()
+
 def set_cell_bg(cell, rgb: RGBColor):
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
     shd = OxmlElement('w:shd')
     shd.set(qn('w:val'), 'clear')
     shd.set(qn('w:color'), 'auto')
-    shd.set(qn('w:fill'), f'{rgb.red:02X}{rgb.green:02X}{rgb.blue:02X}')
+    shd.set(qn('w:fill'), rgb_hex(rgb))
     tcPr.append(shd)
 
 def set_cell_border(cell, top=None, bottom=None, left=None, right=None):
