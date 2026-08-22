@@ -397,7 +397,57 @@ async function seed() {
 
   // 7. Vehicle Images (Curated High-Res Real Imagery mapped by BodyType)
   console.log("🖼️ Seeding high-resolution real vehicle imagery for all 40 cars...");
-  const realCarImages: Record<string, string[]> = {
+  // 7. Vehicle Images (Curated High-Res Real Imagery mapped by Model Name)
+  console.log("🖼️ Seeding high-resolution real vehicle imagery for all 40 cars...");
+  const modelSpecificImages: Record<string, string[]> = {
+    "Veloz Cross": [
+      "https://images.unsplash.com/photo-1541348263662-e082662d82da?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=1200&q=80",
+    ],
+    Vios: [
+      "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1580273916550-e323be2ae537?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=1200&q=80",
+    ],
+    Camry: [
+      "https://images.unsplash.com/photo-1617469767053-d3b523a0b982?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1580273916550-e323be2ae537?auto=format&fit=crop&w=1200&q=80",
+    ],
+    Ranger: [
+      "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1551830820-330a71b99659?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=1200&q=80",
+    ],
+    Morning: [
+      "https://images.unsplash.com/photo-1590362891991-f776e747a588?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=1200&q=80",
+    ],
+    VF5: [
+      "https://images.unsplash.com/photo-1560958089-b8a1929cea89?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=1200&q=80",
+    ],
+    VF8: [
+      "https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?auto=format&fit=crop&w=1200&q=80",
+    ],
+    "C 200": [
+      "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1617469767053-d3b523a0b982?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=1200&q=80",
+    ],
+    "320i": [
+      "https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1580273916550-e323be2ae537?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1617469767053-d3b523a0b982?auto=format&fit=crop&w=1200&q=80",
+    ],
+  };
+
+  const defaultCategoryImages: Record<string, string[]> = {
     MPV: [
       "https://images.unsplash.com/photo-1541348263662-e082662d82da?auto=format&fit=crop&w=1200&q=80",
       "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80",
@@ -424,48 +474,56 @@ async function seed() {
       "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=1200&q=80",
     ],
     Hatchback: [
-      "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1590362891991-f776e747a588?auto=format&fit=crop&w=1200&q=80",
       "https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1541348263662-e082662d82da?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=1200&q=80",
     ],
   };
 
   for (let i = 0; i < variants.length; i++) {
     const variant = variants[i];
     const model = models.find((m) => m.id === variant.modelId)!;
-    const categoryImages = realCarImages[model.bodyType] || realCarImages.SUV;
+    const images = modelSpecificImages[model.name] || defaultCategoryImages[model.bodyType] || defaultCategoryImages.SUV;
 
     await db.insert(schema.vehicleImages).values([
-      { variantId: variant.id, imageUrl: categoryImages[0], isThumbnail: true, is360Asset: false, angleOrder: 1 },
-      { variantId: variant.id, imageUrl: categoryImages[1], isThumbnail: false, is360Asset: false, angleOrder: 2 },
-      { variantId: variant.id, imageUrl: categoryImages[2], isThumbnail: false, is360Asset: false, angleOrder: 3 },
+      { variantId: variant.id, imageUrl: images[0], isThumbnail: true, is360Asset: false, angleOrder: 1 },
+      { variantId: variant.id, imageUrl: images[1], isThumbnail: false, is360Asset: false, angleOrder: 2 },
+      { variantId: variant.id, imageUrl: images[2], isThumbnail: false, is360Asset: false, angleOrder: 3 },
     ]);
   }
 
-  // 8. Vehicle Quotas
+  // 8. Vehicle Quotas (Varied & Realistic Inventory Counts per Variant)
   console.log("📦 Seeding showroom inventory quotas...");
-  const colors = ["Trắng Ngọc Trai", "Đen Huyền Bí", "Bạc Ánh Trăng", "Đỏ Rực Rỡ", "Xanh Thiên Thanh"];
-  for (const variant of variants) {
-    for (const color of colors.slice(0, 3)) {
+  const colors = ["Trắng Ngọc Trai", "Đen Huyền Bí", "Bạc Ánh Trăng"];
+  const stockPattern = [2, 4, 1, 6, 3, 5, 2, 8, 3, 1, 4, 7, 2, 5, 3, 6, 2, 4, 1, 5];
+
+  for (let i = 0; i < variants.length; i++) {
+    const variant = variants[i];
+    const baseHN = stockPattern[i % stockPattern.length];
+    const baseHCM = stockPattern[(i + 3) % stockPattern.length];
+    const baseDN = Math.max(1, stockPattern[(i + 7) % stockPattern.length] - 1);
+
+    for (let cIndex = 0; cIndex < colors.length; cIndex++) {
+      const color = colors[cIndex];
       await db.insert(schema.vehicleQuotas).values({
         variantId: variant.id,
         color,
         showroomId: srHN.id,
-        totalPhysicalCount: 8,
-        softLockedCount: 1,
+        totalPhysicalCount: baseHN + cIndex,
+        softLockedCount: cIndex === 0 ? 1 : 0,
       });
       await db.insert(schema.vehicleQuotas).values({
         variantId: variant.id,
         color,
         showroomId: srHCM.id,
-        totalPhysicalCount: 6,
+        totalPhysicalCount: baseHCM,
         softLockedCount: 0,
       });
       await db.insert(schema.vehicleQuotas).values({
         variantId: variant.id,
         color,
         showroomId: srDN.id,
-        totalPhysicalCount: 4,
+        totalPhysicalCount: baseDN,
         softLockedCount: 0,
       });
     }

@@ -263,13 +263,13 @@ function LoginContent() {
             <Car className="h-8 w-8 text-primary" />
             <CardTitle className="text-2xl font-bold">AUTO DEALERSHIP</CardTitle>
           </div>
-          <CardDescription>Dang nhap vao he thong quan ly & ban xe</CardDescription>
+          <CardDescription>Đăng nhập vào hệ thống quản lý & bán xe</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border text-xs space-y-2">
             <div className="flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-300">
               <UserCheck className="h-3.5 w-3.5 text-primary" />
-              <span>Tai khoan Demo (Click de tu dong nhap):</span>
+              <span>Tài khoản Demo (Click để tự động nhập):</span>
             </div>
             <div className="grid grid-cols-2 gap-1.5">
               {DEMO_ACCOUNTS.map((acc) => (
@@ -288,14 +288,14 @@ function LoginContent() {
 
           <Tabs defaultValue="password">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="password">Mat khau</TabsTrigger>
-              <TabsTrigger value="otp">Ma OTP SMS</TabsTrigger>
+              <TabsTrigger value="password">Mật khẩu</TabsTrigger>
+              <TabsTrigger value="otp">Mã OTP SMS</TabsTrigger>
             </TabsList>
 
             <TabsContent value="password">
               <form onSubmit={handlePasswordLogin} className="space-y-4 pt-2">
                 <div className="space-y-2">
-                  <Label htmlFor="identity">Email / So dien thoai</Label>
+                  <Label htmlFor="identity">Email / Số điện thoại</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -309,7 +309,7 @@ function LoginContent() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">Mat khau</Label>
+                  <Label htmlFor="password">Mật khẩu</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -345,7 +345,7 @@ function LoginContent() {
                     onClick={() => setShowForgotPassword(true)}
                     className="text-primary hover:underline font-medium"
                   >
-                    Quen mat khau?
+                    Quên mật khẩu?
                   </button>
                 </div>
 
@@ -353,7 +353,7 @@ function LoginContent() {
 
                 <Button type="submit" className="w-full" disabled={loading}>
                   <Lock className="h-4 w-4 mr-2" />
-                  {loading ? "Dang xu ly..." : "Dang nhap"}
+                  {loading ? "Đang xử lý..." : "Đăng nhập"}
                 </Button>
               </form>
             </TabsContent>
@@ -361,7 +361,7 @@ function LoginContent() {
             <TabsContent value="otp">
               <form onSubmit={handleOTPLogin} className="space-y-4 pt-2">
                 <div className="space-y-2">
-                  <Label htmlFor="otpPhone">So dien thoai nhan ma OTP</Label>
+                  <Label htmlFor="otpPhone">Số điện thoại nhận mã OTP</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -382,12 +382,12 @@ function LoginContent() {
                     onClick={handleSendOTP}
                   >
                     <Phone className="h-4 w-4 mr-2" />
-                    Gui ma xac thuc OTP
+                    Gửi mã xác thực OTP
                   </Button>
                 ) : (
                   <>
                     <div className="space-y-2">
-                      <Label htmlFor="otpCode">Nhap ma OTP 6 chu so</Label>
+                      <Label htmlFor="otpCode">Nhập mã OTP 6 chữ số</Label>
                       <Input
                         id="otpCode"
                         placeholder="888888"
@@ -399,7 +399,7 @@ function LoginContent() {
                       />
                       <p className="text-xs text-muted-foreground text-center">
                         {countdown > 0
-                          ? `Ma het han sau: ${countdown}s`
+                          ? `Mã hết hạn sau: ${countdown}s`
                           : ""}
                         {countdown === 0 && otpSent && (
                           <button
@@ -407,7 +407,7 @@ function LoginContent() {
                             onClick={handleSendOTP}
                             className="text-primary ml-2 underline"
                           >
-                            Gui lai ma
+                            Gửi lại mã
                           </button>
                         )}
                       </p>
@@ -415,12 +415,12 @@ function LoginContent() {
                     {error && <p className="text-sm text-destructive font-medium">{error}</p>}
                     <Button type="submit" className="w-full" disabled={loading}>
                       <Lock className="h-4 w-4 mr-2" />
-                      {loading ? "Dang xu ly..." : "Xac nhan & Dang nhap"}
+                      {loading ? "Đang xử lý..." : "Xác nhận & Đăng nhập"}
                     </Button>
                   </>
                 )}
                 <p className="text-xs text-muted-foreground text-center">
-                  Sandbox: Ma OTP co dinh la 888888
+                  Sandbox: Mã OTP cố định là 888888
                 </p>
               </form>
             </TabsContent>

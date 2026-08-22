@@ -19,10 +19,10 @@ export function Header() {
           </Link>
           <nav className="hidden md:flex items-center gap-4 text-sm">
             <Link href="/catalog" className="text-muted-foreground hover:text-foreground transition-colors">
-              Danh muc xe
+              Danh mục xe
             </Link>
             <Link href="/test-drive" className="text-muted-foreground hover:text-foreground transition-colors">
-              Lai thu
+              Lái thử
             </Link>
           </nav>
         </div>
@@ -42,7 +42,7 @@ export function Header() {
                 <Link href="/orders">
                   <Button variant="ghost" size="sm">
                     <ShoppingCart className="h-4 w-4 mr-1" />
-                    Don hang
+                    Đơn hàng
                   </Button>
                 </Link>
               )}
@@ -58,12 +58,12 @@ export function Header() {
                 onClick={() => signOut({ callbackUrl: "/login" })}
               >
                 <LogOut className="h-4 w-4 mr-1" />
-                Dang xuat
+                Đăng xuất
               </Button>
             </>
           ) : (
             <Link href="/login">
-              <Button size="sm">Dang nhap</Button>
+              <Button size="sm">Đăng nhập</Button>
             </Link>
           )}
         </div>
