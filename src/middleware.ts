@@ -6,8 +6,8 @@ const protectedRoutes: Record<string, string[]> = {
   "/portal": ["ADMIN", "MANAGER", "SALE"],
   "/profile": ["ADMIN", "MANAGER", "SALE", "CUSTOMER"],
   "/orders": ["CUSTOMER", "SALE", "ADMIN", "MANAGER"],
-  "/checkout": ["CUSTOMER", "SALE"],
-  "/test-drive": ["CUSTOMER", "SALE"],
+  "/checkout": ["CUSTOMER", "SALE", "ADMIN", "MANAGER"],
+  "/test-drive": ["CUSTOMER", "SALE", "ADMIN", "MANAGER"],
 };
 
 const adminOnlyRoutes = ["/portal/users", "/portal/config", "/portal/audit-logs"];
@@ -26,7 +26,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = await getToken({ req: request });
+  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
 
   if (!token) {
     const loginUrl = new URL("/login", request.url);

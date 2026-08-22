@@ -23,7 +23,7 @@ const ACCESSORIES = [
 function CheckoutContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
 
   const variantId = searchParams.get("variant_id");
   const color = searchParams.get("color") || "";
@@ -37,17 +37,23 @@ function CheckoutContent() {
   const [orderId, setOrderId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!session) {
-      router.push(`/login?redirect=/checkout?variant_id=${variantId}&color=${color}`);
+    if (status === "loading") return;
+
+    if (status === "unauthenticated" || !session) {
+      const redirectTarget = encodeURIComponent(`/checkout?variant_id=${variantId || ""}&color=${color || ""}`);
+      router.push(`/login?redirect=${redirectTarget}`);
       return;
     }
+
     if (variantId) {
       fetch(`/api/v1/catalog/variants/${variantId}`)
         .then((r) => r.json())
         .then((d) => { if (d.success) setVehicle(d.data); })
         .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
     }
-  }, [variantId, session, router, color]);
+  }, [variantId, session, status, router, color]);
 
   useEffect(() => {
     if (countdown <= 0) return;
