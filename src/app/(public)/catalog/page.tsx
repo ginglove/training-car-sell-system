@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -142,9 +143,17 @@ export default function CatalogPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {vehicles.map((vehicle) => (
             <Link key={vehicle.id} href={`/catalog/${vehicle.id}`}>
-              <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
-                <div className="h-48 bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
-                  <Car className="h-20 w-20 text-blue-300" />
+              <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group">
+                <div className="h-48 relative overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                  {vehicle.thumbnailUrl ? (
+                    <img
+                      src={vehicle.thumbnailUrl}
+                      alt={`${vehicle.brandName} ${vehicle.modelName}`}
+                      className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <Car className="h-20 w-20 text-muted-foreground/30" />
+                  )}
                 </div>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-2">

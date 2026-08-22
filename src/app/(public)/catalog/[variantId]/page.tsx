@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -34,6 +35,7 @@ export default function CarDetailPage() {
   const [vehicle, setVehicle] = useState<VariantDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedColor, setSelectedColor] = useState("");
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const [loanPercent, setLoanPercent] = useState(70);
   const [loanTermYears, setLoanTermYears] = useState(5);
@@ -49,6 +51,9 @@ export default function CarDetailPage() {
           if (data.data.colors?.length > 0) {
             setSelectedColor(data.data.colors[0].color);
           }
+          if (data.data.images?.length > 0) {
+            setSelectedImage(data.data.images[0].url);
+          }
         }
       } catch {
         // error
@@ -61,22 +66,17 @@ export default function CarDetailPage() {
 
   if (loading) {
     return (
-      <div className="container py-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-muted rounded w-1/3" />
-          <div className="h-96 bg-muted rounded" />
-        </div>
+      <div className="container py-12 text-center">
+        <p className="text-muted-foreground">Dang tai thong tin xe...</p>
       </div>
     );
   }
 
   if (!vehicle) {
     return (
-      <div className="container py-16 text-center">
-        <h2 className="text-xl font-semibold">Khong tim thay xe</h2>
-        <Link href="/catalog">
-          <Button className="mt-4">Quay lai danh muc</Button>
-        </Link>
+      <div className="container py-12 text-center">
+        <h2 className="text-xl font-semibold mb-2">Khong tim thay thong tin xe</h2>
+        <Button onClick={() => router.push("/catalog")}>Quay lai danh muc</Button>
       </div>
     );
   }
@@ -90,6 +90,8 @@ export default function CarDetailPage() {
 
   const selectedQuota = vehicle.colors?.find((c) => c.color === selectedColor);
 
+  const displayImage = selectedImage || (vehicle.images && vehicle.images.length > 0 ? vehicle.images[0].url : null);
+
   return (
     <div className="container py-6">
       <Button variant="ghost" onClick={() => router.back()} className="mb-4">
@@ -99,8 +101,34 @@ export default function CarDetailPage() {
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg h-96 flex items-center justify-center">
-            <Car className="h-40 w-40 text-blue-200" />
+          <div className="space-y-3">
+            <div className="relative rounded-xl overflow-hidden h-96 bg-slate-100 dark:bg-slate-800 flex items-center justify-center border shadow-sm">
+              {displayImage ? (
+                <img
+                  src={displayImage}
+                  alt={`${vehicle.brandName} ${vehicle.modelName}`}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <Car className="h-32 w-32 text-muted-foreground/30" />
+              )}
+            </div>
+
+            {vehicle.images && vehicle.images.length > 1 && (
+              <div className="flex gap-3 overflow-x-auto pb-2">
+                {vehicle.images.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedImage(img.url)}
+                    className={`h-20 w-28 rounded-lg overflow-hidden border-2 transition-all shrink-0 ${
+                      displayImage === img.url ? "border-primary ring-2 ring-primary/20" : "border-transparent opacity-70 hover:opacity-100"
+                    }`}
+                  >
+                    <img src={img.url} alt="angle" className="h-full w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>

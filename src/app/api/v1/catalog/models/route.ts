@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { vehicleModels, brands, vehicleVariants, vehicleQuotas } from "@/lib/db/schema";
+import { vehicleModels, brands, vehicleVariants, vehicleQuotas, vehicleImages } from "@/lib/db/schema";
 import { eq, ilike, sql, and, gte, lte } from "drizzle-orm";
 import { apiSuccess, apiError } from "@/lib/utils/api-response";
 
@@ -45,12 +45,14 @@ export async function GET(request: NextRequest) {
         modelName: vehicleModels.name,
         brandName: brands.name,
         bodyType: vehicleModels.bodyType,
+        thumbnailUrl: sql<string | null>`MAX(${vehicleImages.imageUrl})`,
         availableQuota: sql<number>`COALESCE(SUM(${vehicleQuotas.availableQuota}), 0)`,
       })
       .from(vehicleVariants)
       .innerJoin(vehicleModels, eq(vehicleVariants.modelId, vehicleModels.id))
       .innerJoin(brands, eq(vehicleModels.brandId, brands.id))
       .leftJoin(vehicleQuotas, eq(vehicleQuotas.variantId, vehicleVariants.id))
+      .leftJoin(vehicleImages, and(eq(vehicleImages.variantId, vehicleVariants.id), eq(vehicleImages.isThumbnail, true)))
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .groupBy(
         vehicleVariants.id,
