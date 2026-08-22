@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { getDatabase } from "@netlify/database";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
