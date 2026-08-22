@@ -8,17 +8,29 @@ import { v4 as uuidv4 } from "uuid";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { transactionRef, result, receivedAmount: overrideAmount } = body;
+    const { transactionRef, orderId, result, receivedAmount: overrideAmount } = body;
 
-    if (!transactionRef || !result) {
-      return apiError("transactionRef and result are required", 400);
+    if ((!transactionRef && !orderId) || !result) {
+      return apiError("transactionRef or orderId, and result are required", 400);
     }
 
-    const [payment] = await db
-      .select()
-      .from(payments)
-      .where(eq(payments.transactionRef, transactionRef))
-      .limit(1);
+    let payment;
+    if (orderId) {
+      const [p] = await db
+        .select()
+        .from(payments)
+        .where(eq(payments.orderId, orderId))
+        .orderBy(sql`${payments.createdAt} DESC`)
+        .limit(1);
+      payment = p;
+    } else if (transactionRef) {
+      const [p] = await db
+        .select()
+        .from(payments)
+        .where(eq(payments.transactionRef, transactionRef))
+        .limit(1);
+      payment = p;
+    }
 
     if (!payment) {
       return apiError("Payment not found", 404);
