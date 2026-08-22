@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Search, SlidersHorizontal, Car, Fuel, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,11 +30,7 @@ export default function CatalogPage() {
   const [priceRange, setPriceRange] = useState("all");
   const [purpose, setPurpose] = useState("all");
 
-  useEffect(() => {
-    fetchVehicles();
-  }, [bodyType, priceRange, purpose]);
-
-  async function fetchVehicles() {
+  const fetchVehicles = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
     if (bodyType !== "all") params.set("bodyType", bodyType);
@@ -51,7 +47,11 @@ export default function CatalogPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [bodyType, priceRange, purpose, search]);
+
+  useEffect(() => {
+    fetchVehicles();
+  }, [fetchVehicles]);
 
   return (
     <div className="container py-6">

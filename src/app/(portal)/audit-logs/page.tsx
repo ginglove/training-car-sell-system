@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { FileText, Search, RefreshCw, Key, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,11 +55,7 @@ export default function AuditLogsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [decrypting, setDecrypting] = useState(false);
 
-  useEffect(() => {
-    fetchLogs();
-  }, [pagination.page]);
-
-  async function fetchLogs() {
+  const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -82,7 +78,11 @@ export default function AuditLogsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [pagination.page, pagination.limit, filters]);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
 
   async function handleDecryptPII(userId: string) {
     setDecrypting(true);

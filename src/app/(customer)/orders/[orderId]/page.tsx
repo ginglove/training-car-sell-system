@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Car, CreditCard, Building, FileText, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,11 +26,7 @@ export default function OrderDetailPage() {
   const [switching, setSwitching] = useState(false);
   const [selectedBank, setSelectedBank] = useState("");
 
-  useEffect(() => {
-    fetchOrder();
-  }, [orderId]);
-
-  async function fetchOrder() {
+  const fetchOrder = useCallback(async () => {
     try {
       const res = await fetch(`/api/v1/orders/${orderId}`);
       const data = await res.json();
@@ -38,7 +34,11 @@ export default function OrderDetailPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [orderId]);
+
+  useEffect(() => {
+    fetchOrder();
+  }, [fetchOrder]);
 
   async function handleBankSwitch() {
     if (!selectedBank) return;

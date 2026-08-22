@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Warehouse, Lock, Clock, Search, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,11 +41,7 @@ export default function InventoryPage() {
   const [holdName, setHoldName] = useState("");
   const [holdReason, setHoldReason] = useState("");
 
-  useEffect(() => {
-    fetchVehicles();
-  }, [statusFilter]);
-
-  async function fetchVehicles() {
+  const fetchVehicles = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (statusFilter !== "all") params.set("status", statusFilter);
@@ -56,7 +52,11 @@ export default function InventoryPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [statusFilter, search]);
+
+  useEffect(() => {
+    fetchVehicles();
+  }, [fetchVehicles]);
 
   async function handleHoldVIN() {
     const res = await fetch("/api/v1/inventory/manual-vin-hold", {
