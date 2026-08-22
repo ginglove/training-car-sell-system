@@ -7,6 +7,7 @@ import { eq, or } from "drizzle-orm";
 import { verifyMockOTP } from "@/lib/mock/otp";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "autodealer-secret-key-production-2026",
   providers: [
     Credentials({
       id: "credentials",
@@ -83,7 +84,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   session: { strategy: "jwt", maxAge: 24 * 60 * 60 },
-  pages: { signIn: "/login" },
+  pages: { signIn: "/login", error: "/login" },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {

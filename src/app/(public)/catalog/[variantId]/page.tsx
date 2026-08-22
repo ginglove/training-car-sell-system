@@ -179,6 +179,10 @@ export default function CarDetailPage() {
                   <img
                     src={displayImage}
                     alt={`${vehicle.brandName} ${vehicle.modelName}`}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?auto=format&fit=crop&w=1200&q=80";
+                    }}
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                     style={{ transform: `rotate(${rotationAngle}deg)` }}
                   />
@@ -215,7 +219,15 @@ export default function CarDetailPage() {
                       viewMode === "2d" && displayImage === img.url ? "border-primary ring-2 ring-primary/20" : "border-transparent opacity-70 hover:opacity-100"
                     }`}
                   >
-                    <img src={img.url} alt="angle" className="h-full w-full object-cover" />
+                    <img
+                      src={img.url}
+                      alt="angle"
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?auto=format&fit=crop&w=1200&q=80";
+                      }}
+                      className="h-full w-full object-cover"
+                    />
                   </button>
                 ))}
               </div>
@@ -224,46 +236,82 @@ export default function CarDetailPage() {
 
           {/* Vehicle Information & Color Picker */}
           <div>
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <p className="text-sm font-semibold text-primary uppercase tracking-wider">{vehicle.brandName}</p>
-                <h1 className="text-3xl font-bold">{vehicle.modelName} - {vehicle.variantName}</h1>
-              </div>
-              <Badge variant={selectedQuota && selectedQuota.quota > 0 ? "success" : "destructive"} className="text-base px-3 py-1">
-                {selectedQuota && selectedQuota.quota > 0 ? `Còn ${selectedQuota.quota} xe sẵn giao` : "Hết hàng kho chi nhánh"}
-              </Badge>
-            </div>
+            {(() => {
+              const uniqueColors = Array.from(new Set(vehicle.colors?.map((c) => c.color) || []));
+              const totalStockForSelectedColor = vehicle.colors
+                ?.filter((c) => c.color === selectedColor)
+                .reduce((sum, c) => sum + (c.quota || 0), 0) || 0;
+              const totalSystemStock = vehicle.colors?.reduce((sum, c) => sum + (c.quota || 0), 0) || 0;
 
-            <div className="flex items-baseline gap-4 mb-4">
-              <p className="text-3xl font-bold text-primary">{formatVND(grandTotal)}</p>
-              {accessoriesTotal > 0 && (
-                <p className="text-sm text-muted-foreground line-through">
-                  Giá gốc xe: {formatVND(vehicle.listedPrice)}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2 mb-6">
-              <Label className="text-sm font-medium">Màu sắc ngoại thất (Tự động đổi màu sơn mô hình 3D):</Label>
-              <div className="flex flex-wrap gap-2">
-                {vehicle.colors?.map((c) => (
-                  <button
-                    key={c.color}
-                    onClick={() => setSelectedColor(c.color)}
-                    className={`px-4 py-2 rounded-lg text-sm border flex items-center gap-2 transition-all ${
-                      selectedColor === c.color
-                        ? "border-primary bg-primary/10 text-primary font-semibold shadow-sm"
-                        : "border-border hover:border-primary/50"
-                    }`}
-                  >
-                    <span>{c.color}</span>
-                    <Badge variant="outline" className="text-xs">
-                      {c.quota} xe tại {c.showroomName || "Showroom"}
+              return (
+                <>
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <p className="text-sm font-semibold text-primary uppercase tracking-wider">{vehicle.brandName}</p>
+                      <h1 className="text-3xl font-bold">{vehicle.modelName} - {vehicle.variantName}</h1>
+                      <p className="text-xs text-muted-foreground mt-1">Tổng tồn kho toàn hệ thống: <span className="font-semibold text-foreground">{totalSystemStock} xe</span></p>
+                    </div>
+                    <Badge variant={totalStockForSelectedColor > 0 ? "success" : "destructive"} className="text-base px-3 py-1">
+                      {totalStockForSelectedColor > 0 ? `Còn ${totalStockForSelectedColor} xe sẵn giao` : "Hết hàng kho chi nhánh"}
                     </Badge>
-                  </button>
-                ))}
-              </div>
-            </div>
+                  </div>
+
+                  <div className="flex items-baseline gap-4 mb-4">
+                    <p className="text-3xl font-bold text-primary">{formatVND(grandTotal)}</p>
+                    {accessoriesTotal > 0 && (
+                      <p className="text-sm text-muted-foreground line-through">
+                        Giá gốc xe: {formatVND(vehicle.listedPrice)}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-3 mb-6">
+                    <Label className="text-sm font-medium">Màu sắc ngoại thất (Tự động đổi màu sơn mô hình 3D):</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {uniqueColors.map((colorName) => {
+                        const colorTotalStock = vehicle.colors
+                          ?.filter((c) => c.color === colorName)
+                          .reduce((sum, c) => sum + (c.quota || 0), 0) || 0;
+
+                        return (
+                          <button
+                            key={colorName}
+                            onClick={() => setSelectedColor(colorName)}
+                            className={`px-4 py-2.5 rounded-lg text-sm border flex items-center gap-2 transition-all ${
+                              selectedColor === colorName
+                                ? "border-primary bg-primary/10 text-primary font-semibold shadow-sm ring-1 ring-primary"
+                                : "border-border hover:border-primary/50"
+                            }`}
+                          >
+                            <span>{colorName}</span>
+                            <Badge variant="outline" className="text-xs">
+                              Còn {colorTotalStock} xe
+                            </Badge>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Showroom Breakdown for Selected Color */}
+                    <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border text-xs space-y-1.5">
+                      <p className="font-medium text-slate-700 dark:text-slate-300">📍 Phân bổ tồn kho màu <span className="font-bold text-primary">{selectedColor}</span> theo đại lý:</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                        {vehicle.colors
+                          ?.filter((c) => c.color === selectedColor)
+                          .map((c, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-2 rounded bg-white dark:bg-slate-800 border text-[11px]">
+                              <span className="truncate font-medium">{c.showroomName || "Showroom"}</span>
+                              <Badge variant="secondary" className="font-mono text-[10px] shrink-0">
+                                {c.quota} xe
+                              </Badge>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
           </div>
 
           {/* Accessories Selector Checklist */}

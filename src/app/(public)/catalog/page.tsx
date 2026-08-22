@@ -257,6 +257,10 @@ function CatalogContent() {
                       <img
                         src={vehicle.thumbnailUrl}
                         alt={`${vehicle.brandName} ${vehicle.modelName}`}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?auto=format&fit=crop&w=1200&q=80";
+                        }}
                         className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (
