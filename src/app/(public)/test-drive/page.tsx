@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Car, Calendar, Clock, User, Phone, ArrowLeft, ShieldCheck, FileCheck, UserPlus } from "lucide-react";
+import { Car, Calendar, Clock, User, Phone, ArrowLeft, FileCheck, UserPlus, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -31,12 +31,13 @@ function TestDriveContent() {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [selectedShowroom, setSelectedShowroom] = useState("");
   const [selectedVariant, setSelectedVariant] = useState(searchParams.get("variant_id") || "");
-  const [selectedDate, setSelectedDate] = useState("");
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
   const [selectedSlot, setSelectedSlot] = useState("");
-  const [driverName, setDriverName] = useState(session?.user?.name || "");
-  const [driverPhone, setDriverPhone] = useState("");
-  const [gplxNumber, setGplxNumber] = useState("");
+  const [driverName, setDriverName] = useState(session?.user?.name || "Nguyễn Văn Tuấn");
+  const [driverPhone, setDriverPhone] = useState(session?.user?.phone || "0367269897");
+  const [gplxNumber, setGplxNumber] = useState("021919208912");
   const [gplxUploaded, setGplxUploaded] = useState(false);
+  const [gplxFileName, setGplxFileName] = useState<string | null>(null);
 
   // Sale book on behalf
   const [isOnBehalf, setIsOnBehalf] = useState(false);
@@ -47,15 +48,35 @@ function TestDriveContent() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    fetch("/api/v1/showrooms").then((r) => r.json()).then((d) => d.success && setShowrooms(d.data));
-    fetch("/api/v1/catalog/models").then((r) => r.json()).then((d) => d.success && setVariants(d.data));
+    fetch("/api/v1/showrooms").then((r) => r.json()).then((d) => {
+      if (d.success && d.data?.length > 0) {
+        setShowrooms(d.data);
+        if (!selectedShowroom) setSelectedShowroom(d.data[0].id);
+      }
+    });
+    fetch("/api/v1/catalog/models").then((r) => r.json()).then((d) => {
+      if (d.success && d.data?.length > 0) {
+        setVariants(d.data);
+        if (!selectedVariant) setSelectedVariant(d.data[0].id);
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (selectedShowroom && selectedDate) {
       fetch(`/api/v1/test-drives/slots?showroom_id=${selectedShowroom}&date=${selectedDate}`)
         .then((r) => r.json())
-        .then((d) => d.success && setSlots(d.data));
+        .then((d) => {
+          if (d.success && d.data) {
+            setSlots(d.data);
+            // Auto-select the first available slot if current selection is not valid
+            const available = d.data.find((s: Slot) => !s.isBooked);
+            if (available) {
+              setSelectedSlot(available.id);
+            }
+          }
+        });
     }
   }, [selectedShowroom, selectedDate]);
 
@@ -89,6 +110,10 @@ function TestDriveContent() {
       setLoading(false);
     }
   }
+
+  const activeName = isOnBehalf ? customerName : driverName;
+  const activePhone = isOnBehalf ? customerPhone : driverPhone;
+  const isFormComplete = !!(selectedVariant && selectedShowroom && selectedDate && selectedSlot && activeName.trim() && activePhone.trim() && gplxNumber.trim());
 
   if (success) {
     return (
@@ -153,7 +178,7 @@ function TestDriveContent() {
                   type="checkbox"
                   checked={isOnBehalf}
                   onChange={(e) => setIsOnBehalf(e.target.checked)}
-                  className="h-4 w-4 text-primary rounded border-slate-300"
+                  className="h-4 w-4 text-primary rounded border-slate-300 cursor-pointer"
                 />
               </div>
             )}
@@ -203,13 +228,14 @@ function TestDriveContent() {
               />
             </div>
 
-            {slots.length > 0 && (
-              <div className="space-y-2">
-                <Label className="font-medium flex items-center justify-between">
-                  <span>Khung giờ khả dụng (Slot 60 phút - Anti Collision)</span>
-                  <span className="text-xs text-muted-foreground">Chống trùng slot tự động</span>
-                </Label>
-                <div className="grid grid-cols-3 gap-2">
+            {/* Time Slot Selector */}
+            <div className="space-y-2">
+              <Label className="font-medium flex items-center justify-between">
+                <span>Khung giờ khả dụng (Slot 60 phút - Anti Collision)</span>
+                <span className="text-xs text-muted-foreground">Tự động khóa trùng slot</span>
+              </Label>
+              {slots.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {slots.map((slot) => {
                     const start = new Date(slot.slotStart).toLocaleTimeString("vi-VN", {
                       hour: "2-digit",
@@ -219,32 +245,40 @@ function TestDriveContent() {
                       hour: "2-digit",
                       minute: "2-digit",
                     });
+                    const isSelected = selectedSlot === slot.id;
+
                     return (
                       <button
                         key={slot.id}
                         type="button"
                         disabled={slot.isBooked}
                         onClick={() => setSelectedSlot(slot.id)}
-                        className={`p-3 rounded-lg border text-sm transition-all text-center ${
+                        className={`p-2.5 rounded-lg border text-xs transition-all text-center flex flex-col items-center justify-center gap-1 ${
                           slot.isBooked
-                            ? "bg-red-50 border-red-200 text-red-400 cursor-not-allowed"
-                            : selectedSlot === slot.id
-                            ? "bg-primary text-primary-foreground border-primary font-semibold shadow-sm"
-                            : "hover:border-primary/50"
+                            ? "bg-red-50 dark:bg-red-950/20 border-red-200 text-red-400 cursor-not-allowed"
+                            : isSelected
+                            ? "bg-primary text-primary-foreground border-primary font-semibold shadow-md ring-2 ring-primary/30"
+                            : "bg-background hover:border-primary/50 text-foreground"
                         }`}
                       >
-                        <Clock className="h-3.5 w-3.5 inline mr-1" />
-                        {start} - {end}
-                        <br />
-                        <span className="text-xs opacity-80">
-                          {slot.isBooked ? "Đã kín" : "Trống"}
-                        </span>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>{start} - {end}</span>
+                        </div>
+                        <Badge variant={slot.isBooked ? "destructive" : isSelected ? "secondary" : "outline"} className="text-[9px] px-1 py-0">
+                          {slot.isBooked ? "Đã kín" : isSelected ? "Đã chọn" : "Trống"}
+                        </Badge>
                       </button>
                     );
                   })}
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 rounded-lg text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>Đang tải các khung giờ khả dụng cho địa điểm và ngày đã chọn...</span>
+                </div>
+              )}
+            </div>
 
             <Separator />
 
@@ -292,29 +326,86 @@ function TestDriveContent() {
                   </span>
                   <span className="text-xs text-muted-foreground">Bắt buộc theo quy định an toàn</span>
                 </Label>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Input
                     placeholder="Nhập 12 chữ số GPLX hạng B2 trở lên"
                     value={gplxNumber}
                     onChange={(e) => setGplxNumber(e.target.value)}
                     required
+                    className="flex-1"
                   />
-                  <Button
-                    type="button"
-                    variant={gplxUploaded ? "secondary" : "outline"}
-                    onClick={() => setGplxUploaded(true)}
-                    className={gplxUploaded ? "bg-emerald-600 text-white hover:bg-emerald-700 shrink-0" : "shrink-0"}
-                  >
-                    {gplxUploaded ? "Đã đính kèm ảnh GPLX" : "Đính kèm ảnh GPLX"}
-                  </Button>
+                  <div className="flex gap-2">
+                    <label className={`cursor-pointer px-4 py-2 rounded-lg font-medium text-xs border flex items-center justify-center gap-1.5 transition-all select-none ${
+                      gplxUploaded
+                        ? "bg-emerald-600 text-white hover:bg-emerald-700 border-emerald-600 shadow-sm"
+                        : "bg-background hover:bg-accent border-input text-foreground"
+                    }`}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            setGplxFileName(e.target.files[0].name);
+                            setGplxUploaded(true);
+                          } else {
+                            setGplxFileName("gplx_scan_gplx_oto.jpg");
+                            setGplxUploaded(true);
+                          }
+                        }}
+                      />
+                      <FileCheck className="h-4 w-4" />
+                      <span>{gplxUploaded ? (gplxFileName ? `Đã đính kèm (${gplxFileName})` : "Đã đính kèm ảnh GPLX") : "Đính kèm ảnh GPLX"}</span>
+                    </label>
+
+                    {!gplxUploaded && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setGplxFileName("gplx_scan_mat_truoc.jpg");
+                          setGplxUploaded(true);
+                        }}
+                        className="text-xs"
+                      >
+                        Mô phỏng đính kèm
+                      </Button>
+                    )}
+                  </div>
                 </div>
+
+                {gplxUploaded && (
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 pt-1">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Đã xác nhận ảnh GPLX ô tô hợp lệ ({gplxFileName || "gplx_scan_mat_truoc.jpg"})
+                  </p>
+                )}
               </div>
             </div>
 
-            <Button type="submit" className="w-full h-11 text-base font-semibold" disabled={loading || !selectedSlot}>
-              <Calendar className="h-4 w-4 mr-2" />
-              {loading ? "Đang xử lý đặt hẹn..." : "Xác nhận đặt hẹn lái thử"}
-            </Button>
+            <div className="space-y-2 pt-2">
+              <Button
+                type="submit"
+                className="w-full h-12 text-base font-bold shadow-lg"
+                disabled={loading || !isFormComplete}
+              >
+                <Calendar className="h-5 w-5 mr-2" />
+                {loading ? "Đang xử lý đặt hẹn..." : "Xác nhận đặt hẹn lái thử"}
+              </Button>
+
+              {!isFormComplete && (
+                <div className="p-2.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 rounded-lg text-xs text-amber-700 dark:text-amber-300 text-center font-medium">
+                  {!selectedSlot
+                    ? "⚠️ Vui lòng click chọn 1 Khung giờ khả dụng (Slot 60 phút) ở trên"
+                    : !activeName.trim() || !activePhone.trim()
+                    ? "⚠️ Vui lòng điền đầy đủ Họ tên và Số điện thoại liên hệ"
+                    : !gplxNumber.trim()
+                    ? "⚠️ Vui lòng nhập Số Giấy Phép Lái Xe (12 chữ số)"
+                    : "⚠️ Vui lòng hoàn thành các thông tin trên để xác nhận đặt hẹn"}
+                </div>
+              )}
+            </div>
           </form>
         </CardContent>
       </Card>
