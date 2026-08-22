@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -25,7 +25,7 @@ interface VehicleVariant {
   thumbnailUrl: string | null;
 }
 
-export default function CatalogPage() {
+function CatalogContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
@@ -366,5 +366,18 @@ export default function CatalogPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function CatalogPage() {
+  return (
+    <Suspense fallback={
+      <div className="container py-16 text-center space-y-4 animate-pulse">
+        <Car className="h-12 w-12 mx-auto text-muted-foreground/40" />
+        <p className="text-sm font-medium text-muted-foreground">Đang tải danh mục xe ô tô...</p>
+      </div>
+    }>
+      <CatalogContent />
+    </Suspense>
   );
 }
