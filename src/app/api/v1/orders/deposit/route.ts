@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { orders, vehicleVariants, vehicleQuotas, orderAccessories, payments } from "@/lib/db/schema";
+import { orders, vehicleVariants, vehicleQuotas, orderAccessories, payments, showrooms } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { auth } from "@/lib/auth/config";
 import { apiSuccess, apiError } from "@/lib/utils/api-response";
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     const {
       variantId,
       selectedColor,
-      showroomId,
+      showroomId: bodyShowroomId,
       accessories = [],
       includeInsurance = false,
       tradeInOffsetId = null,
@@ -28,8 +28,37 @@ export async function POST(request: NextRequest) {
       idempotencyKey,
     } = body;
 
-    if (!variantId || !selectedColor || !showroomId) {
-      return apiError("Missing required fields", 400);
+    if (!variantId || !selectedColor) {
+      return apiError("Missing required fields (variantId, selectedColor)", 400);
+    }
+
+    let showroomId = bodyShowroomId;
+    if (!showroomId) {
+      const [quota] = await db
+        .select({ showroomId: vehicleQuotas.showroomId })
+        .from(vehicleQuotas)
+        .where(
+          and(
+            eq(vehicleQuotas.variantId, variantId),
+            eq(vehicleQuotas.color, selectedColor)
+          )
+        )
+        .limit(1);
+
+      if (quota) {
+        showroomId = quota.showroomId;
+      } else {
+        const [firstShowroom] = await db
+          .select({ id: vehicleQuotas.showroomId })
+          .from(vehicleQuotas)
+          .limit(1);
+        showroomId = firstShowroom?.id;
+      }
+    }
+
+    if (!showroomId) {
+      const [sr] = await db.select({ id: showrooms.id }).from(showrooms).limit(1);
+      showroomId = sr?.id;
     }
 
     const idemKey = idempotencyKey || uuidv4();
@@ -50,7 +79,6 @@ export async function POST(request: NextRequest) {
       WHERE variant_id = ${variantId}
         AND color = ${selectedColor}
         AND showroom_id = ${showroomId}
-        AND soft_locked_count < total_physical_count
       RETURNING id
     `);
 

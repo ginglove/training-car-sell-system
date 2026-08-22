@@ -78,19 +78,21 @@ function CheckoutContent() {
   async function handleSubmit() {
     setSubmitting(true);
     try {
+      const selectedColorQuota = vehicle?.colors?.find((c: any) => c.color === color);
       const res = await fetch("/api/v1/orders/deposit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           variantId,
           selectedColor: color,
+          showroomId: selectedColorQuota?.showroomId,
           accessories: ACCESSORIES.filter((a) => selectedAccessories.includes(a.id)),
           paymentMethod,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        setOrderId(data.data.id);
+        setOrderId(data.data.orderId || data.data.id);
       }
     } catch {
       // error
