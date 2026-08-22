@@ -46,15 +46,18 @@ In your `.env` or temporary shell environment, set your `NETLIFY_DATABASE_URL`:
 export NETLIFY_DATABASE_URL="postgresql://<username>:<password>@<host>/<dbname>?sslmode=require"
 ```
 
-### 2. Push Database Schema Tables (Drizzle ORM)
-Run Drizzle Kit to create all PostgreSQL tables, enums, indexes, and relations:
+### 2. Clean Database Wipe, Push & Seed (Recommended)
+To completely drop obsolete schema tables, push fresh DDL v22 structures, and populate full enterprise seed data in 1 step:
 ```bash
-npm run db:push
+npm run db:reset
 ```
 
-### 3. Populate Seed Data
-Run the automated seed script to insert initial showrooms, demo users, variants, VIN numbers, test-drive slots, and CRM leads:
+Alternatively, if you only want to push updated schema or re-seed:
 ```bash
+# Push latest schema tables
+npm run db:push
+
+# Truncate and seed initial data
 npm run db:seed
 ```
 

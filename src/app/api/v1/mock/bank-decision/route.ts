@@ -11,6 +11,9 @@ export async function POST(req: NextRequest) {
     const token = await getToken({ req });
     if (!token?.sub) return apiError("Unauthorized", 401);
 
+    // Simulate network latency for mock bank API Sandbox
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
     const body = await req.json();
     const { loanApplicationId, decision } = body;
 

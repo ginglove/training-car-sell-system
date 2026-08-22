@@ -7,6 +7,9 @@ import { v4 as uuidv4 } from "uuid";
 
 export async function POST(request: NextRequest) {
   try {
+    // Simulate network latency for mock payment gateway Sandbox
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
     const body = await request.json();
     const { transactionRef, orderId, result, receivedAmount: overrideAmount } = body;
 

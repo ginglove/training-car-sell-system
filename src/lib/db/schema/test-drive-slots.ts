@@ -13,5 +13,9 @@ export const testDriveSlots = pgTable("test_drive_slots", {
   isBooked: boolean("is_booked").default(false),
   customerName: varchar("customer_name", { length: 100 }),
   customerPhone: varchar("customer_phone", { length: 15 }),
+  gplxNumber: varchar("gplx_number", { length: 30 }),
+  gplxImageUrl: varchar("gplx_image_url", { length: 255 }),
+  isOnBehalf: boolean("is_on_behalf").default(false),
+  bookedByUserId: uuid("booked_by_user_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
