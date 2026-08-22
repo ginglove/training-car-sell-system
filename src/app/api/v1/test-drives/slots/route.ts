@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { testDriveSlots } from "@/lib/db/schema";
+import { testDriveSlots, vehicleVariants } from "@/lib/db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
 import { apiSuccess, apiError } from "@/lib/utils/api-response";
 
@@ -20,9 +20,19 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const showroomId = searchParams.get("showroom_id");
     const date = searchParams.get("date");
+    let variantId = searchParams.get("variant_id");
 
     if (!showroomId || !date) {
       return apiError("showroom_id and date are required", 400);
+    }
+
+    if (!variantId) {
+      const [firstVariant] = await db.select({ id: vehicleVariants.id }).from(vehicleVariants).limit(1);
+      variantId = firstVariant?.id || null;
+    }
+
+    if (!variantId) {
+      return apiError("No vehicle variants available", 400);
     }
 
     const dayStart = new Date(`${date}T00:00:00+07:00`);
@@ -49,8 +59,10 @@ export async function GET(request: NextRequest) {
 
     // Auto-generate standard slots for this showroom and date if none exist
     if (slots.length === 0) {
+      const targetVariantId = variantId;
       const newSlots = STANDARD_SLOT_HOURS.map((h) => ({
         showroomId,
+        variantId: targetVariantId,
         slotStart: new Date(`${date}T${h.start}:00+07:00`),
         slotEnd: new Date(`${date}T${h.end}:00+07:00`),
         isBooked: false,
