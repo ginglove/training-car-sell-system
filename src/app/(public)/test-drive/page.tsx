@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Calendar, Clock, MapPin, Car, Phone, User } from "lucide-react";
+import { Calendar, Clock, MapPin, Car, Phone, User, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -92,6 +92,11 @@ function TestDriveContent() {
 
   return (
     <div className="container py-6 max-w-2xl">
+      <Button variant="ghost" onClick={() => router.back()} className="mb-4">
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Quay lai
+      </Button>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Package, ChevronRight, Clock, Car } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Package, ChevronRight, Clock, Car, ArrowLeft } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatVND } from "@/lib/utils";
 import { ORDER_STATUS_LABELS } from "@/lib/constants/order-status";
 
@@ -34,6 +36,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function OrdersPage() {
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -56,6 +59,11 @@ export default function OrdersPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
+      <Button variant="ghost" onClick={() => router.back()} className="mb-4">
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Quay lai
+      </Button>
+
       <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
         <Package className="h-6 w-6" />
         Don hang cua toi

@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { CreditCard, Shield, Clock, Car, Plus, Check } from "lucide-react";
+import { CreditCard, Shield, Clock, Car, Plus, Check, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -125,6 +125,11 @@ function CheckoutContent() {
 
   return (
     <div className="container py-6">
+      <Button variant="ghost" onClick={() => router.back()} className="mb-4">
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Quay lai
+      </Button>
+
       <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
         <CreditCard className="h-6 w-6" />
         Thanh toan dat coc an toan

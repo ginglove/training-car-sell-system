@@ -1,9 +1,9 @@
 "use client";
 
 import { Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle, XCircle, AlertTriangle, Clock } from "lucide-react";
+import { CheckCircle, XCircle, AlertTriangle, Clock, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -41,6 +41,7 @@ const STATUS_CONFIG: Record<string, {
 
 function PaymentResultContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const status = searchParams.get("status") || "FAILED";
   const orderId = searchParams.get("orderId");
   const config = STATUS_CONFIG[status] || STATUS_CONFIG.FAILED;
@@ -48,6 +49,10 @@ function PaymentResultContent() {
 
   return (
     <div className="container py-16 max-w-lg">
+      <Button variant="ghost" onClick={() => router.back()} className="mb-4">
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Quay lai
+      </Button>
       <Card>
         <CardHeader className="text-center">
           <Icon className={`h-20 w-20 mx-auto mb-4 ${config.color}`} />

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { User, Shield, Save } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { User, Shield, Save, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
 export default function ProfilePage() {
+  const router = useRouter();
   const { data: session } = useSession();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -64,6 +66,11 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-3xl mx-auto">
+      <Button variant="ghost" onClick={() => router.back()} className="mb-4">
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Quay lai
+      </Button>
+
       <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
         <User className="h-6 w-6" />
         Thong tin tai khoan & Ho so phap ly
