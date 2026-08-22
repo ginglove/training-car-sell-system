@@ -36,6 +36,7 @@ export default function ProfilePage() {
   const [cccdFront, setCccdFront] = useState<string | null>(null);
   const [cccdBack, setCccdBack] = useState<string | null>(null);
 
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [pwdForm, setPwdForm] = useState({
     currentPassword: "",
     newPassword: "",
@@ -85,27 +86,36 @@ export default function ProfilePage() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setProfileMsg(null);
+    setFieldErrors({});
+
+    const errors: Record<string, string> = {};
 
     // Client-side validations
     if (form.fullName.trim().length < 2 || form.fullName.trim().length > 100) {
-      setProfileMsg({ type: "error", text: "Họ và tên phải từ 2 đến 100 ký tự (ERR_UI_048)" });
-      return;
+      errors.fullName = "Họ và tên phải từ 2 đến 100 ký tự";
     }
 
     if (form.identityCardNumber && !form.identityCardNumber.includes("*")) {
       if (!/^[0-9]{12}$/.test(form.identityCardNumber)) {
-        setProfileMsg({ type: "error", text: "Số CCCD phải đủ 12 chữ số chuẩn (ERR_UI_048)" });
-        return;
+        errors.identityCardNumber = "Số CCCD phải đủ đúng 12 chữ số chuẩn";
       }
     }
 
     if (form.identityCardDate && new Date(form.identityCardDate) > new Date()) {
-      setProfileMsg({ type: "error", text: "Ngày cấp CCCD không thể vượt quá ngày hiện tại (ERR_UI_048)" });
-      return;
+      errors.identityCardDate = "Ngày cấp CCCD không thể vượt quá ngày hiện tại";
     }
 
     if (form.permanentAddress && (form.permanentAddress.trim().length < 10 || form.permanentAddress.trim().length > 255)) {
-      setProfileMsg({ type: "error", text: "Địa chỉ HKTT phải từ 10 đến 255 ký tự (ERR_UI_048)" });
+      errors.permanentAddress = "Địa chỉ HKTT phải từ 10 đến 255 ký tự";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setProfileMsg({
+        type: "error",
+        text: Object.values(errors)[0] + " (Mã lỗi: ERR_UI_048)",
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
@@ -121,9 +131,11 @@ export default function ProfilePage() {
         setProfileMsg({ type: "success", text: "Cập nhật hồ sơ cá nhân thành công!" });
       } else {
         setProfileMsg({ type: "error", text: data.error || "Cập nhật hồ sơ thất bại" });
+        window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } catch {
       setProfileMsg({ type: "error", text: "Lỗi kết nối máy chủ" });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
       setSaving(false);
     }
@@ -206,13 +218,18 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Họ và tên (*)</Label>
+                <Label className={fieldErrors.fullName ? "text-destructive" : ""}>Họ và tên (*)</Label>
                 <Input
                   value={form.fullName}
-                  onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, fullName: e.target.value });
+                    if (fieldErrors.fullName) setFieldErrors({ ...fieldErrors, fullName: "" });
+                  }}
                   placeholder="Nguyễn Văn A"
+                  className={fieldErrors.fullName ? "border-destructive focus-visible:ring-destructive" : ""}
                   required
                 />
+                {fieldErrors.fullName && <p className="text-xs text-destructive font-medium">{fieldErrors.fullName}</p>}
               </div>
 
               <div className="space-y-2">
@@ -260,10 +277,7 @@ export default function ProfilePage() {
                   type="button"
                   variant="outline"
                   className="w-full flex items-center justify-center gap-2 border-primary/40 hover:bg-primary/5 text-primary font-semibold"
-                  onClick={() => {
-                    setShowPwdModal(true);
-                    document.getElementById("password-section")?.scrollIntoView({ behavior: "smooth" });
-                  }}
+                  onClick={() => setShowPwdModal(true)}
                 >
                   <Lock className="h-4 w-4" />
                   🔒 ĐỔI MẬT KHẨU TÀI KHOẢN
@@ -282,26 +296,41 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Số CCCD (*)</Label>
+                <Label className={fieldErrors.identityCardNumber ? "text-destructive" : ""}>Số CCCD (*)</Label>
                 <Input
                   value={form.identityCardNumber}
-                  onChange={(e) => setForm({ ...form, identityCardNumber: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, identityCardNumber: e.target.value });
+                    if (fieldErrors.identityCardNumber) setFieldErrors({ ...fieldErrors, identityCardNumber: "" });
+                  }}
                   placeholder="001200001234"
                   maxLength={12}
+                  className={fieldErrors.identityCardNumber ? "border-destructive focus-visible:ring-destructive" : ""}
                 />
-                <p className="text-[11px] text-muted-foreground">
-                  Mã hóa AES-256 qua Mock KMS (Masking UI: 00120000****)
-                </p>
+                {fieldErrors.identityCardNumber ? (
+                  <p className="text-xs text-destructive font-medium">{fieldErrors.identityCardNumber}</p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">
+                    Mã hóa AES-256 qua Mock KMS (Masking UI: 00120000****)
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Ngày cấp (*)</Label>
+                  <Label className={fieldErrors.identityCardDate ? "text-destructive" : ""}>Ngày cấp (*)</Label>
                   <Input
                     type="date"
                     value={form.identityCardDate}
-                    onChange={(e) => setForm({ ...form, identityCardDate: e.target.value })}
+                    onChange={(e) => {
+                      setForm({ ...form, identityCardDate: e.target.value });
+                      if (fieldErrors.identityCardDate) setFieldErrors({ ...fieldErrors, identityCardDate: "" });
+                    }}
+                    className={fieldErrors.identityCardDate ? "border-destructive focus-visible:ring-destructive" : ""}
                   />
+                  {fieldErrors.identityCardDate && (
+                    <p className="text-[11px] text-destructive font-medium">{fieldErrors.identityCardDate}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -315,14 +344,22 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Địa chỉ HKTT (*)</Label>
+                <Label className={fieldErrors.permanentAddress ? "text-destructive" : ""}>Địa chỉ HKTT (*)</Label>
                 <textarea
                   value={form.permanentAddress}
-                  onChange={(e) => setForm({ ...form, permanentAddress: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, permanentAddress: e.target.value });
+                    if (fieldErrors.permanentAddress) setFieldErrors({ ...fieldErrors, permanentAddress: "" });
+                  }}
                   rows={2}
-                  className="w-full p-2 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                  className={`w-full p-2 text-sm rounded-md border bg-background focus:outline-none focus:ring-2 ${
+                    fieldErrors.permanentAddress ? "border-destructive focus:ring-destructive" : "border-input focus:ring-primary"
+                  }`}
                   placeholder="Số 12 Đường Cầu Giấy, Phường Quan Hoa, Quận Cầu Giấy, Hà Nội"
                 />
+                {fieldErrors.permanentAddress && (
+                  <p className="text-xs text-destructive font-medium">{fieldErrors.permanentAddress}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -393,62 +430,6 @@ export default function ProfilePage() {
           </Button>
         </div>
       </form>
-
-      <Separator className="my-8" />
-
-      {/* Change Password Card */}
-      <Card id="password-section" className="shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <Lock className="h-4 w-4 text-primary" />
-            Đổi Mật Khẩu Tài Khoản
-          </CardTitle>
-          <CardDescription>Mật khẩu tối thiểu 8 ký tự, bao gồm ít nhất 1 chữ hoa và 1 chữ số</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
-            {pwdMsg && (
-              <div className={`p-3 rounded-lg border flex items-center gap-2 text-sm ${
-                pwdMsg.type === "success" ? "bg-green-50 border-green-200 text-green-700" : "bg-red-50 border-red-200 text-red-700"
-              }`}>
-                {pwdMsg.type === "success" ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
-                <span>{pwdMsg.text}</span>
-              </div>
-            )}
-            <div className="space-y-2">
-              <Label>Mật khẩu hiện tại (*)</Label>
-              <Input
-                type="password"
-                value={pwdForm.currentPassword}
-                onChange={(e) => setPwdForm({ ...pwdForm, currentPassword: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Mật khẩu mới (*)</Label>
-              <Input
-                type="password"
-                value={pwdForm.newPassword}
-                onChange={(e) => setPwdForm({ ...pwdForm, newPassword: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Xác nhận mật khẩu mới (*)</Label>
-              <Input
-                type="password"
-                value={pwdForm.confirmPassword}
-                onChange={(e) => setPwdForm({ ...pwdForm, confirmPassword: e.target.value })}
-                required
-              />
-            </div>
-            <Button type="submit" disabled={pwdSaving}>
-              <Lock className="h-4 w-4 mr-2" />
-              {pwdSaving ? "Đang cập nhật..." : "Cập nhật mật khẩu"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
 
       {/* Password Change Modal Dialog Triggered from Section 1 */}
       {showPwdModal && (
