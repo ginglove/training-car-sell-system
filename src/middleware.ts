@@ -1,6 +1,5 @@
+import { auth } from "@/lib/auth/config";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
 
 const protectedRoutes: Record<string, string[]> = {
   "/portal": ["ADMIN", "MANAGER", "SALE"],
@@ -13,8 +12,9 @@ const protectedRoutes: Record<string, string[]> = {
 const adminOnlyRoutes = ["/portal/users", "/portal/config", "/portal/audit-logs"];
 const managerRoutes = ["/portal/inventory", "/portal/transfers", "/portal/refunds"];
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+export default auth((req) => {
+  const { pathname } = req.nextUrl;
+  const session = req.auth;
 
   if (
     pathname.startsWith("/api") ||
@@ -26,15 +26,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-
-  if (!token) {
-    const loginUrl = new URL("/login", request.url);
+  if (!session || !session.user) {
+    const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  const role = token.role as string;
+  const role = (session.user as any).role as string;
 
   for (const route of adminOnlyRoutes) {
     if (pathname.startsWith(route) && role !== "ADMIN") {
@@ -55,7 +53,7 @@ export async function middleware(request: NextRequest) {
   }
 
   return NextResponse.next();
-}
+});
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|images|fonts).*)"],
