@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { Car, ArrowLeft, Fuel, Gauge, Calendar, MapPin, Calculator, RefreshCw, CheckCircle2, ShieldCheck, Tag, Box, Image as ImageIcon } from "lucide-react";
+import { Car, ArrowLeft, Calendar, Calculator, RefreshCw, CheckCircle2, ShieldCheck, Tag, Box, Image as ImageIcon, Store, Info, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,13 @@ import { Label } from "@/components/ui/label";
 import { formatVND } from "@/lib/utils";
 import { Car3DViewer } from "@/components/ui/car-3d-viewer";
 
+interface ShowroomQuota {
+  showroomId: string;
+  showroomName: string;
+  color: string;
+  quota: number;
+}
+
 interface VariantDetail {
   id: string;
   variantName: string;
@@ -25,7 +32,7 @@ interface VariantDetail {
   modelName: string;
   brandName: string;
   bodyType: string;
-  colors: { color: string; quota: number; showroomName: string }[];
+  colors: ShowroomQuota[];
   images: { url: string; is360: boolean; angle: number }[];
 }
 
@@ -37,6 +44,26 @@ const AVAILABLE_ACCESSORIES = [
   { id: "acc_5", name: "Phủ Ceramic 9H bảo vệ sơn", price: 15000000, desc: "Chống trầy xước & hiệu ứng lá sen" },
 ];
 
+const VIETNAMESE_SPEC_KEYS: Record<string, string> = {
+  engine: "Động cơ & Dung tích",
+  horsepower: "Công suất tối đa",
+  torque: "Mô-men xoắn cực đại",
+  transmission: "Hộp số",
+  drivetrain: "Hệ dẫn động",
+  fuelType: "Nhiên liệu tiêu thụ",
+  fuelConsumption: "Mức tiêu thụ nhiên liệu (l/100km)",
+  dimensions: "Kích thước (Dài x Rộng x Cao)",
+  wheelbase: "Chiều dài cơ sở",
+  groundClearance: "Khoảng sáng gầm xe",
+  seatingCapacity: "Số chỗ ngồi",
+  airbags: "Số túi khí an toàn",
+  brakes: "Hệ thống phanh",
+  suspension: "Hệ thống treo",
+  wheelSize: "Kích thước mâm (Lốp)",
+  infotainment: "Màn hình giải trí",
+  soundSystem: "Hệ thống âm thanh",
+};
+
 export default function CarDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -44,6 +71,7 @@ export default function CarDetailPage() {
   const [vehicle, setVehicle] = useState<VariantDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedColor, setSelectedColor] = useState("");
+  const [selectedShowroomId, setSelectedShowroomId] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [rotationAngle, setRotationAngle] = useState(0);
 
@@ -64,12 +92,19 @@ export default function CarDetailPage() {
         const res = await fetch(`/api/v1/catalog/variants/${params.variantId}`);
         const data = await res.json();
         if (data.success) {
-          setVehicle(data.data);
-          if (data.data.colors?.length > 0) {
-            setSelectedColor(data.data.colors[0].color);
+          const detail = data.data as VariantDetail;
+          setVehicle(detail);
+
+          if (detail.colors?.length > 0) {
+            const firstColor = detail.colors[0].color;
+            setSelectedColor(firstColor);
+            const firstShowroom = detail.colors.find((c) => c.color === firstColor && c.quota > 0) || detail.colors[0];
+            if (firstShowroom) {
+              setSelectedShowroomId(firstShowroom.showroomId);
+            }
           }
-          if (data.data.images?.length > 0) {
-            setSelectedImage(data.data.images[0].url);
+          if (detail.images?.length > 0) {
+            setSelectedImage(detail.images[0].url);
           }
         }
       } catch {
@@ -98,6 +133,18 @@ export default function CarDetailPage() {
     );
   }
 
+  // When color changes, select first available showroom for that color
+  function handleColorSelect(colorName: string) {
+    setSelectedColor(colorName);
+    const availableShowroomsForColor = vehicle?.colors.filter((c) => c.color === colorName) || [];
+    const withQuota = availableShowroomsForColor.find((c) => c.quota > 0);
+    if (withQuota) {
+      setSelectedShowroomId(withQuota.showroomId);
+    } else if (availableShowroomsForColor.length > 0) {
+      setSelectedShowroomId(availableShowroomsForColor[0].showroomId);
+    }
+  }
+
   const toggleAccessory = (id: string) => {
     if (selectedAccessories.includes(id)) {
       setSelectedAccessories(selectedAccessories.filter((item) => item !== id));
@@ -119,18 +166,23 @@ export default function CarDetailPage() {
     (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) /
     (Math.pow(1 + monthlyRate, totalMonths) - 1);
 
-  const selectedQuota = vehicle.colors?.find((c) => c.color === selectedColor);
+  // Available showrooms for selected color
+  const showroomsForSelectedColor = vehicle.colors?.filter((c) => c.color === selectedColor) || [];
+  const selectedShowroomQuota = showroomsForSelectedColor.find((c) => c.showroomId === selectedShowroomId);
+  const currentQuotaNumber = selectedShowroomQuota?.quota || 0;
+
   const displayImage = selectedImage || (vehicle.images && vehicle.images.length > 0 ? vehicle.images[0].url : null);
 
   const checkoutQuery = new URLSearchParams({
     variant_id: vehicle.id,
     color: selectedColor,
+    showroomId: selectedShowroomId,
     accessories: selectedAccessories.join(","),
   }).toString();
 
   return (
-    <div className="container py-6">
-      <Button variant="ghost" onClick={() => router.back()} className="mb-4">
+    <div className="container py-6 space-y-6">
+      <Button variant="ghost" onClick={() => router.back()} className="mb-2">
         <ArrowLeft className="h-4 w-4 mr-2" />
         Quay lại danh mục
       </Button>
@@ -234,13 +286,10 @@ export default function CarDetailPage() {
             )}
           </div>
 
-          {/* Vehicle Information & Color Picker */}
+          {/* Vehicle Information, Color & Showroom Picker */}
           <div>
             {(() => {
               const uniqueColors = Array.from(new Set(vehicle.colors?.map((c) => c.color) || []));
-              const totalStockForSelectedColor = vehicle.colors
-                ?.filter((c) => c.color === selectedColor)
-                .reduce((sum, c) => sum + (c.quota || 0), 0) || 0;
               const totalSystemStock = vehicle.colors?.reduce((sum, c) => sum + (c.quota || 0), 0) || 0;
 
               return (
@@ -249,10 +298,12 @@ export default function CarDetailPage() {
                     <div>
                       <p className="text-sm font-semibold text-primary uppercase tracking-wider">{vehicle.brandName}</p>
                       <h1 className="text-3xl font-bold">{vehicle.modelName} - {vehicle.variantName}</h1>
-                      <p className="text-xs text-muted-foreground mt-1">Tổng tồn kho toàn hệ thống: <span className="font-semibold text-foreground">{totalSystemStock} xe</span></p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Tổng tồn kho toàn hệ thống: <span className="font-semibold text-foreground">{totalSystemStock} xe</span>
+                      </p>
                     </div>
-                    <Badge variant={totalStockForSelectedColor > 0 ? "success" : "destructive"} className="text-base px-3 py-1">
-                      {totalStockForSelectedColor > 0 ? `Còn ${totalStockForSelectedColor} xe sẵn giao` : "Hết hàng kho chi nhánh"}
+                    <Badge variant={currentQuotaNumber > 0 ? "default" : "destructive"} className="text-sm px-3 py-1 font-bold">
+                      {currentQuotaNumber > 0 ? `🟢 Còn ${currentQuotaNumber} xe tại đại lý đã chọn` : "🔴 Hết hàng đại lý này"}
                     </Badge>
                   </div>
 
@@ -265,8 +316,9 @@ export default function CarDetailPage() {
                     )}
                   </div>
 
+                  {/* Color Selector */}
                   <div className="space-y-3 mb-6">
-                    <Label className="text-sm font-medium">Màu sắc ngoại thất (Tự động đổi màu sơn mô hình 3D):</Label>
+                    <Label className="text-sm font-medium">1. Chọn Màu sắc ngoại thất (Tự động đổi màu sơn 3D):</Label>
                     <div className="flex flex-wrap gap-2">
                       {uniqueColors.map((colorName) => {
                         const colorTotalStock = vehicle.colors
@@ -276,10 +328,10 @@ export default function CarDetailPage() {
                         return (
                           <button
                             key={colorName}
-                            onClick={() => setSelectedColor(colorName)}
+                            onClick={() => handleColorSelect(colorName)}
                             className={`px-4 py-2.5 rounded-lg text-sm border flex items-center gap-2 transition-all ${
                               selectedColor === colorName
-                                ? "border-primary bg-primary/10 text-primary font-semibold shadow-sm ring-1 ring-primary"
+                                ? "border-primary bg-primary/10 text-primary font-semibold shadow-sm ring-2 ring-primary"
                                 : "border-border hover:border-primary/50"
                             }`}
                           >
@@ -291,23 +343,32 @@ export default function CarDetailPage() {
                         );
                       })}
                     </div>
+                  </div>
 
-                    {/* Showroom Breakdown for Selected Color */}
-                    <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border text-xs space-y-1.5">
-                      <p className="font-medium text-slate-700 dark:text-slate-300">📍 Phân bổ tồn kho màu <span className="font-bold text-primary">{selectedColor}</span> theo đại lý:</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-                        {vehicle.colors
-                          ?.filter((c) => c.color === selectedColor)
-                          .map((c, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-2 rounded bg-white dark:bg-slate-800 border text-[11px]">
-                              <span className="truncate font-medium">{c.showroomName || "Showroom"}</span>
-                              <Badge variant="secondary" className="font-mono text-[10px] shrink-0">
-                                {c.quota} xe
-                              </Badge>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
+                  {/* Showroom Picker for Selected Color */}
+                  <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border mb-6">
+                    <Label className="text-sm font-semibold flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
+                      <Store className="h-4 w-4 text-primary" />
+                      2. Chọn Đại Lý / Showroom Nhận Xe (Màu {selectedColor}):
+                    </Label>
+                    <Select value={selectedShowroomId} onValueChange={setSelectedShowroomId}>
+                      <SelectTrigger className="w-full h-11 text-sm bg-white dark:bg-slate-800">
+                        <SelectValue placeholder="-- Chọn Showroom nhận xe --" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {showroomsForSelectedColor.map((sr) => (
+                          <SelectItem key={sr.showroomId} value={sr.showroomId}>
+                            {sr.showroomName} — {sr.quota > 0 ? `🟢 Còn ${sr.quota} xe` : "🔴 Hết hàng"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedShowroomQuota && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Info className="h-3.5 w-3.5 text-blue-500" />
+                        Đại lý đã chọn có sẵn <strong className="text-primary">{selectedShowroomQuota.quota} xe</strong> màu {selectedColor} giao ngay.
+                      </p>
+                    )}
                   </div>
                 </>
               );
@@ -360,20 +421,23 @@ export default function CarDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Specifications Table */}
+          {/* Specifications Table - Converted to Vietnamese Unicode */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Thông số kỹ thuật chi tiết</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {vehicle.specsJson &&
-                  Object.entries(vehicle.specsJson).map(([key, value]) => (
-                    <div key={key} className="flex justify-between py-2 border-b text-sm">
-                      <span className="text-muted-foreground">{key}</span>
-                      <span className="font-medium">{String(value)}</span>
-                    </div>
-                  ))}
+                  Object.entries(vehicle.specsJson).map(([key, value]) => {
+                    const labelVi = VIETNAMESE_SPEC_KEYS[key] || key;
+                    return (
+                      <div key={key} className="flex justify-between py-2 border-b text-sm">
+                        <span className="text-muted-foreground">{labelVi}</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">{String(value)}</span>
+                      </div>
+                    );
+                  })}
               </div>
             </CardContent>
           </Card>
@@ -472,7 +536,7 @@ export default function CarDetailPage() {
               <Separator />
 
               <div className="space-y-2.5 pt-2">
-                <Link href={`/test-drive?variant_id=${vehicle.id}`}>
+                <Link href={`/test-drive?variant_id=${vehicle.id}&showroom_id=${selectedShowroomId}`}>
                   <Button variant="outline" className="w-full h-11 text-sm font-medium">
                     <Calendar className="h-4 w-4 mr-2" />
                     🗓️ Đặt lịch lái thử xe
@@ -481,7 +545,7 @@ export default function CarDetailPage() {
                 <Link href={`/checkout?${checkoutQuery}`}>
                   <Button
                     className="w-full h-12 text-base font-semibold shadow-lg shadow-primary/20"
-                    disabled={!selectedQuota || selectedQuota.quota <= 0}
+                    disabled={!selectedShowroomQuota || currentQuotaNumber <= 0}
                   >
                     💳 Đặt cọc giữ xe ({formatVND(vehicle.minDepositAmount)})
                   </Button>
