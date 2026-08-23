@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RotateCw, ZoomIn, ZoomOut, Lightbulb, RefreshCcw, Eye, Sparkles, Sun } from "lucide-react";
+import { RotateCw, ZoomIn, ZoomOut, Lightbulb, RefreshCcw, Eye, Sparkles, Sun, Loader2 } from "lucide-react";
 
 interface Car3DViewerProps {
   selectedColor?: string;
@@ -24,6 +24,9 @@ const COLOR_MAP: Record<string, number> = {
   "Vàng Cát": 0xb45309,
 };
 
+// Global Memory Cache for Loaded GLTF Scenes for instant smooth switching
+const GLTF_CACHE = new Map<string, THREE.Group>();
+
 export function Car3DViewer({
   selectedColor = "Trắng Ngọc Trai",
   brandName = "Toyota",
@@ -32,6 +35,7 @@ export function Car3DViewer({
 }: Car3DViewerProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const carBodyMaterialRef = useRef<THREE.MeshPhysicalMaterial | THREE.MeshStandardMaterial | null>(null);
   const loadedModelMaterialsRef = useRef<THREE.Material[]>([]);
   const headlightsRef = useRef<THREE.PointLight[]>([]);
@@ -42,6 +46,14 @@ export function Car3DViewer({
   const [cameraDistance, setCameraDistance] = useState(7.0);
   const [isInteracting, setIsInteracting] = useState(false);
 
+  // Smooth Zoom UX State
+  const targetDistanceRef = useRef(7.0);
+  const currentDistanceRef = useRef(7.0);
+
+  // Loading & Progress Indicator state for instant UX feedback
+  const [loadingModel, setLoadingModel] = useState(false);
+  const [loadProgress, setLoadProgress] = useState(0);
+
   // Mouse / Touch interaction state
   const isDraggingRef = useRef(false);
   const previousMousePositionRef = useRef({ x: 0, y: 0 });
@@ -50,8 +62,15 @@ export function Car3DViewer({
   const normalizedBody = (bodyType || "").toUpperCase();
   const isSedanModel = normalizedBody.includes("SEDAN") || (modelName || "").toLowerCase().includes("camry");
   const isSuvModel = normalizedBody.includes("SUV") || (modelName || "").toLowerCase().includes("everest") || (modelName || "").toLowerCase().includes("fortuner") || (modelName || "").toLowerCase().includes("cr-v") || (modelName || "").toLowerCase().includes("santafe");
+  const isPickupModel = normalizedBody.includes("PICKUP") || (modelName || "").toLowerCase().includes("ranger") || (modelName || "").toLowerCase().includes("hilux");
 
-  const modelGlbUrl = isSedanModel ? "/models/sedan.glb" : isSuvModel ? "/models/suv.glb" : null;
+  const modelGlbUrl = isSedanModel
+    ? "/models/sedan.glb"
+    : isSuvModel
+    ? "/models/suv.glb"
+    : isPickupModel
+    ? "/models/pickup.glb"
+    : null;
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -66,12 +85,13 @@ export function Car3DViewer({
 
     // 2. Camera
     const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
-    camera.position.set(0, 1.8, cameraDistance);
+    camera.position.set(0, 1.8, currentDistanceRef.current);
+    cameraRef.current = camera;
 
-    // 3. Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    // 3. Renderer with Performance Optimizations
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Optimized pixel ratio for 60fps smooth zooming
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -81,21 +101,18 @@ export function Car3DViewer({
     const ambientLight = new THREE.AmbientLight(darkStudio ? 0x384152 : 0xffffff, darkStudio ? 0.8 : 1.6);
     scene.add(ambientLight);
 
-    // Main Studio Key Light
     const keyLight = new THREE.DirectionalLight(0xffffff, darkStudio ? 2.2 : 3.0);
     keyLight.position.set(10, 16, 12);
     keyLight.castShadow = true;
-    keyLight.shadow.mapSize.width = 2048;
-    keyLight.shadow.mapSize.height = 2048;
+    keyLight.shadow.mapSize.width = 1024; // Optimized shadow map size for zero lag
+    keyLight.shadow.mapSize.height = 1024;
     keyLight.shadow.bias = -0.0001;
     scene.add(keyLight);
 
-    // Cool Side Fill Light
     const fillLight = new THREE.DirectionalLight(0x93c5fd, darkStudio ? 1.0 : 1.4);
     fillLight.position.set(-12, 10, -10);
     scene.add(fillLight);
 
-    // Warm Rim / Back Highlight
     const rimLight = new THREE.DirectionalLight(0xfef08a, darkStudio ? 1.8 : 1.4);
     rimLight.position.set(0, 12, -15);
     scene.add(rimLight);
@@ -113,7 +130,6 @@ export function Car3DViewer({
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // Circular Pedestal Ring
     const padGeo = new THREE.RingGeometry(0.1, 5.2, 64);
     const padMat = new THREE.MeshStandardMaterial({
       color: darkStudio ? 0x1e293b : 0xcbd5e1,
@@ -125,7 +141,6 @@ export function Car3DViewer({
     pad.position.y = 0.001;
     scene.add(pad);
 
-    // Soft Shadow Blob under Car
     const shadowGeo = new THREE.PlaneGeometry(5.2, 2.8);
     const canvas = document.createElement("canvas");
     canvas.width = 128;
@@ -153,62 +168,94 @@ export function Car3DViewer({
     const initialHex = COLOR_MAP[selectedColor] || 0xd97706;
 
     if (modelGlbUrl) {
-      // LOAD REAL GLB MODEL FOR SEDAN AND SUV (Meshy AI GLB Models)
-      const loader = new GLTFLoader();
-      loader.load(
-        modelGlbUrl,
-        (gltf) => {
-          const model = gltf.scene;
-
-          // Compute Bounding Box to Center and Auto-Scale Model properly
-          const bbox = new THREE.Box3().setFromObject(model);
-          const size = bbox.getSize(new THREE.Vector3());
-          const center = bbox.getCenter(new THREE.Vector3());
-
-          // Target length ~ 4.6 units in Three.js world
-          const maxDim = Math.max(size.x, size.y, size.z);
-          const targetScale = 4.6 / maxDim;
-          model.scale.set(targetScale, targetScale, targetScale);
-
-          // Center horizontally and align to ground Y=0
-          model.position.x = -center.x * targetScale;
-          model.position.y = -bbox.min.y * targetScale;
-          model.position.z = -center.z * targetScale;
-
-          // Rotate to face front-three-quarter view nicely
-          model.rotation.y = Math.PI / 2;
-
-          loadedModelMaterialsRef.current = [];
-
-          model.traverse((child) => {
-            if ((child as THREE.Mesh).isMesh) {
-              const mesh = child as THREE.Mesh;
-              mesh.castShadow = true;
-              mesh.receiveShadow = true;
-
-              if (mesh.material) {
-                const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-                materials.forEach((mat) => {
-                  if (mat instanceof THREE.MeshStandardMaterial || mat instanceof THREE.MeshPhysicalMaterial) {
-                    carBodyMaterialRef.current = mat;
-                    mat.color.setHex(initialHex);
-                    mat.needsUpdate = true;
-                  }
-                  loadedModelMaterialsRef.current.push(mat);
-                });
-              }
+      // Check in-memory cache first for instant loading
+      if (GLTF_CACHE.has(modelGlbUrl)) {
+        const cachedModel = GLTF_CACHE.get(modelGlbUrl)!.clone();
+        loadedModelMaterialsRef.current = [];
+        cachedModel.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            if (mesh.material) {
+              const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+              materials.forEach((mat) => {
+                if (mat instanceof THREE.MeshStandardMaterial || mat instanceof THREE.MeshPhysicalMaterial) {
+                  const clonedMat = mat.clone();
+                  clonedMat.color.setHex(initialHex);
+                  mesh.material = clonedMat;
+                  carBodyMaterialRef.current = clonedMat;
+                  loadedModelMaterialsRef.current.push(clonedMat);
+                }
+              });
             }
-          });
+          }
+        });
+        carGroup.add(cachedModel);
+        setLoadingModel(false);
+      } else {
+        setLoadingModel(true);
+        setLoadProgress(10);
+        const loader = new GLTFLoader();
 
-          carGroup.add(model);
-        },
-        undefined,
-        (err) => {
-          console.error(`Error loading ${modelGlbUrl} GLTF model:`, err);
-        }
-      );
+        loader.load(
+          modelGlbUrl,
+          (gltf) => {
+            const model = gltf.scene;
+
+            const bbox = new THREE.Box3().setFromObject(model);
+            const size = bbox.getSize(new THREE.Vector3());
+            const center = bbox.getCenter(new THREE.Vector3());
+
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const targetScale = 4.6 / maxDim;
+            model.scale.set(targetScale, targetScale, targetScale);
+
+            model.position.x = -center.x * targetScale;
+            model.position.y = -bbox.min.y * targetScale;
+            model.position.z = -center.z * targetScale;
+            model.rotation.y = Math.PI / 2;
+
+            GLTF_CACHE.set(modelGlbUrl, model);
+
+            loadedModelMaterialsRef.current = [];
+            model.traverse((child) => {
+              if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+
+                if (mesh.material) {
+                  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+                  materials.forEach((mat) => {
+                    if (mat instanceof THREE.MeshStandardMaterial || mat instanceof THREE.MeshPhysicalMaterial) {
+                      carBodyMaterialRef.current = mat;
+                      mat.color.setHex(initialHex);
+                      mat.needsUpdate = true;
+                    }
+                    loadedModelMaterialsRef.current.push(mat);
+                  });
+                }
+              }
+            });
+
+            carGroup.add(model);
+            setLoadingModel(false);
+          },
+          (xhr) => {
+            if (xhr.lengthComputable) {
+              const percentComplete = Math.round((xhr.loaded / xhr.total) * 100);
+              setLoadProgress(percentComplete);
+            }
+          },
+          (err) => {
+            console.error(`Error loading ${modelGlbUrl} GLTF model:`, err);
+            setLoadingModel(false);
+          }
+        );
+      }
     } else {
-      // Procedural 3D Model for Non-Sedan & Non-SUV Body Types (MPV, Pickup, Hatchback)
+      // Procedural 3D Model for MPV & Hatchback
       const bodyMat = new THREE.MeshPhysicalMaterial({
         color: initialHex,
         metalness: 0.6,
@@ -236,14 +283,13 @@ export function Car3DViewer({
       const taillightMat = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xd97706, emissiveIntensity: 1.8 });
 
       const isMPV = normalizedBody.includes("MPV");
-      const isPickup = normalizedBody.includes("PICKUP");
       const isHatchback = normalizedBody.includes("HATCHBACK");
 
-      const carLength = isPickup ? 4.8 : isMPV ? 4.5 : isHatchback ? 3.6 : 4.3;
-      const carWidth = isPickup ? 2.2 : isMPV ? 2.1 : 2.0;
-      const chassisHeight = isPickup ? 0.7 : isMPV ? 0.65 : 0.58;
-      const groundY = isPickup ? 0.65 : isMPV ? 0.58 : 0.48;
-      const tireRadius = isPickup ? 0.42 : 0.36;
+      const carLength = isMPV ? 4.5 : isHatchback ? 3.6 : 4.3;
+      const carWidth = isMPV ? 2.1 : 2.0;
+      const chassisHeight = isMPV ? 0.65 : 0.58;
+      const groundY = isMPV ? 0.58 : 0.48;
+      const tireRadius = 0.36;
 
       const chassisGeo = new THREE.BoxGeometry(carWidth, chassisHeight, carLength);
       const chassis = new THREE.Mesh(chassisGeo, bodyMat);
@@ -258,37 +304,24 @@ export function Car3DViewer({
       hood.castShadow = true;
       carGroup.add(hood);
 
-      if (isPickup) {
-        const cabinGeo = new THREE.BoxGeometry(carWidth - 0.2, 0.75, 2.2);
-        const cabin = new THREE.Mesh(cabinGeo, bodyMat);
-        cabin.position.set(0, groundY + 0.6, 0.3);
-        cabin.castShadow = true;
-        carGroup.add(cabin);
+      const cabinLength = isMPV ? 2.6 : isHatchback ? 1.9 : 2.1;
+      const cabinHeight = isMPV ? 0.76 : 0.62;
+      const cabinZ = isMPV ? -0.1 : -0.2;
 
-        const bedGeo = new THREE.BoxGeometry(carWidth - 0.1, 0.45, 1.8);
-        const bed = new THREE.Mesh(bedGeo, trimMat);
-        bed.position.set(0, groundY + 0.35, -1.3);
-        carGroup.add(bed);
-      } else {
-        const cabinLength = isMPV ? 2.6 : isHatchback ? 1.9 : 2.1;
-        const cabinHeight = isMPV ? 0.76 : 0.62;
-        const cabinZ = isMPV ? -0.1 : -0.2;
+      const cabinGeo = new THREE.BoxGeometry(carWidth - 0.25, cabinHeight, cabinLength);
+      const cabin = new THREE.Mesh(cabinGeo, bodyMat);
+      cabin.position.set(0, groundY + chassisHeight / 2 + cabinHeight / 2 - 0.05, cabinZ);
+      cabin.castShadow = true;
+      carGroup.add(cabin);
 
-        const cabinGeo = new THREE.BoxGeometry(carWidth - 0.25, cabinHeight, cabinLength);
-        const cabin = new THREE.Mesh(cabinGeo, bodyMat);
-        cabin.position.set(0, groundY + chassisHeight / 2 + cabinHeight / 2 - 0.05, cabinZ);
-        cabin.castShadow = true;
-        carGroup.add(cabin);
-
-        if (isMPV) {
-          const railGeo = new THREE.BoxGeometry(0.06, 0.06, cabinLength - 0.2);
-          const railL = new THREE.Mesh(railGeo, chromeMat);
-          railL.position.set(-(carWidth / 2 - 0.15), groundY + chassisHeight / 2 + cabinHeight + 0.02, cabinZ);
-          const railR = new THREE.Mesh(railGeo, chromeMat);
-          railR.position.set(carWidth / 2 - 0.15, groundY + chassisHeight / 2 + cabinHeight + 0.02, cabinZ);
-          carGroup.add(railL);
-          carGroup.add(railR);
-        }
+      if (isMPV) {
+        const railGeo = new THREE.BoxGeometry(0.06, 0.06, cabinLength - 0.2);
+        const railL = new THREE.Mesh(railGeo, chromeMat);
+        railL.position.set(-(carWidth / 2 - 0.15), groundY + chassisHeight / 2 + cabinHeight + 0.02, cabinZ);
+        const railR = new THREE.Mesh(railGeo, chromeMat);
+        railR.position.set(carWidth / 2 - 0.15, groundY + chassisHeight / 2 + cabinHeight + 0.02, cabinZ);
+        carGroup.add(railL);
+        carGroup.add(railR);
       }
 
       const windshieldGeo = new THREE.BoxGeometry(carWidth - 0.3, 0.55, 0.75);
@@ -299,7 +332,7 @@ export function Car3DViewer({
 
       const rearWinGeo = new THREE.BoxGeometry(carWidth - 0.3, 0.5, 0.7);
       const rearWindow = new THREE.Mesh(rearWinGeo, glassMat);
-      rearWindow.position.set(0, groundY + chassisHeight / 2 + 0.3, -carLength / 2 + (isPickup ? 1.8 : 1.0));
+      rearWindow.position.set(0, groundY + chassisHeight / 2 + 0.3, -carLength / 2 + 1.0);
       rearWindow.rotation.x = -Math.PI / 5.5;
       carGroup.add(rearWindow);
 
@@ -369,20 +402,23 @@ export function Car3DViewer({
 
     scene.add(carGroup);
 
-    // 7. Animation Loop
+    // 7. High Performance Animation Loop with LERP Smooth Zooming
     let animationFrameId: number;
 
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
+
+      // Smooth LERP camera distance transition for ultra-smooth zoom UX
+      currentDistanceRef.current += (targetDistanceRef.current - currentDistanceRef.current) * 0.12;
 
       if (autoRotate && !isDraggingRef.current) {
         rotationRef.current.y += 0.006;
       }
 
       // Smooth Orbital Camera Position
-      camera.position.x = cameraDistance * Math.sin(rotationRef.current.y) * Math.cos(rotationRef.current.x);
-      camera.position.y = cameraDistance * Math.sin(rotationRef.current.x) + 0.7;
-      camera.position.z = cameraDistance * Math.cos(rotationRef.current.y) * Math.cos(rotationRef.current.x);
+      camera.position.x = currentDistanceRef.current * Math.sin(rotationRef.current.y) * Math.cos(rotationRef.current.x);
+      camera.position.y = currentDistanceRef.current * Math.sin(rotationRef.current.x) + 0.7;
+      camera.position.z = currentDistanceRef.current * Math.cos(rotationRef.current.y) * Math.cos(rotationRef.current.x);
       camera.lookAt(0, 0.5, 0);
 
       renderer.render(scene, camera);
@@ -413,7 +449,12 @@ export function Car3DViewer({
       renderer.dispose();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cameraDistance, autoRotate, darkStudio, bodyType, isSedanModel, isSuvModel]);
+  }, [autoRotate, darkStudio, bodyType, isSedanModel, isSuvModel, isPickupModel]);
+
+  // Sync Camera Zoom Distance Target
+  useEffect(() => {
+    targetDistanceRef.current = cameraDistance;
+  }, [cameraDistance]);
 
   // Dynamic Color Sync for both Procedural and GLTF Loaded GLB Models
   useEffect(() => {
@@ -469,10 +510,31 @@ export function Car3DViewer({
     setIsInteracting(false);
   };
 
+  // Smooth Scroll Wheel Zoom UX Handler
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const zoomFactor = e.deltaY * 0.003;
+    setCameraDistance((prev) => Math.max(3.5, Math.min(10.0, prev + zoomFactor)));
+  };
+
   return (
-    <div className={`relative w-full h-[450px] rounded-2xl overflow-hidden transition-colors duration-500 border shadow-inner select-none ${
-      darkStudio ? "bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white" : "bg-gradient-to-b from-slate-100 via-slate-50 to-slate-200 text-slate-900"
-    }`}>
+    <div
+      onWheel={handleWheel}
+      className={`relative w-full h-[450px] rounded-2xl overflow-hidden transition-colors duration-500 border shadow-inner select-none ${
+        darkStudio ? "bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white" : "bg-gradient-to-b from-slate-100 via-slate-50 to-slate-200 text-slate-900"
+      }`}
+    >
+      {/* Loading Progress Indicator Overlay */}
+      {loadingModel && (
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-md flex flex-col items-center justify-center z-20 space-y-3">
+          <Loader2 className="h-8 w-8 text-primary animate-spin" />
+          <p className="text-sm font-semibold">Đang tải mô hình 3D xe ({loadProgress}%)...</p>
+          <div className="w-48 bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden">
+            <div className="bg-primary h-full transition-all duration-300" style={{ width: `${loadProgress}%` }} />
+          </div>
+        </div>
+      )}
+
       {/* 3D WebGL Canvas Container */}
       <div
         ref={mountRef}
@@ -487,13 +549,15 @@ export function Car3DViewer({
       />
 
       {/* Floating Header Badges */}
-      <div className="absolute top-4 left-4 flex flex-wrap items-center gap-2 pointer-events-none">
+      <div className="absolute top-4 left-4 flex flex-wrap items-center gap-2 pointer-events-none z-10">
         <Badge variant="secondary" className="bg-background/80 backdrop-blur-md border shadow font-semibold">
           <Eye className="h-3.5 w-3.5 mr-1 text-primary" />
           {isSedanModel
             ? "Meshy GLTF 3D Model: Mercedes-Benz C-Class"
             : isSuvModel
             ? "Meshy GLTF 3D Model: Ford Everest SUV"
+            : isPickupModel
+            ? "Meshy GLTF 3D Model: Golden Road Ranger Pick-up"
             : `WebGL 3D Studio: ${brandName} ${modelName}`}
         </Badge>
         <Badge variant="outline" className="bg-background/60 backdrop-blur-sm text-xs font-mono">
@@ -505,14 +569,14 @@ export function Car3DViewer({
       </div>
 
       {/* Floating Interaction Hint */}
-      <div className="absolute bottom-4 left-4 bg-background/80 backdrop-blur-md px-3.5 py-1.5 rounded-full border shadow text-xs text-muted-foreground pointer-events-none flex items-center gap-2">
+      <div className="absolute bottom-4 left-4 bg-background/80 backdrop-blur-md px-3.5 py-1.5 rounded-full border shadow text-xs text-muted-foreground pointer-events-none flex items-center gap-2 z-10">
         <Sparkles className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
         <RotateCw className={`h-3.5 w-3.5 text-primary ${isInteracting ? "animate-spin" : ""}`} />
-        <span>Kéo chuột / chạm xoay mô hình 3D 360° ({bodyType})</span>
+        <span>Kéo chuột / cuộn trang để Phóng to / Thu nhỏ mô hình 3D 360° ({bodyType})</span>
       </div>
 
       {/* Control Buttons Bar */}
-      <div className="absolute top-4 right-4 flex flex-col gap-2">
+      <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
         <Button
           size="sm"
           variant={autoRotate ? "default" : "outline"}
@@ -547,7 +611,7 @@ export function Car3DViewer({
           size="sm"
           variant="outline"
           className="h-8 w-8 p-0 rounded-full shadow bg-background/80 backdrop-blur border hover:bg-background"
-          onClick={() => setCameraDistance((d) => Math.max(4, d - 0.8))}
+          onClick={() => setCameraDistance((d) => Math.max(3.5, d - 0.8))}
           title="Phóng to"
         >
           <ZoomIn className="h-4 w-4 text-foreground" />
@@ -557,7 +621,7 @@ export function Car3DViewer({
           size="sm"
           variant="outline"
           className="h-8 w-8 p-0 rounded-full shadow bg-background/80 backdrop-blur border hover:bg-background"
-          onClick={() => setCameraDistance((d) => Math.min(9.5, d + 0.8))}
+          onClick={() => setCameraDistance((d) => Math.min(10.0, d + 0.8))}
           title="Thu nhỏ"
         >
           <ZoomOut className="h-4 w-4 text-foreground" />
