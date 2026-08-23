@@ -49,6 +49,9 @@ export function Car3DViewer({
 
   const normalizedBody = (bodyType || "").toUpperCase();
   const isSedanModel = normalizedBody.includes("SEDAN") || (modelName || "").toLowerCase().includes("camry");
+  const isSuvModel = normalizedBody.includes("SUV") || (modelName || "").toLowerCase().includes("everest") || (modelName || "").toLowerCase().includes("fortuner") || (modelName || "").toLowerCase().includes("cr-v") || (modelName || "").toLowerCase().includes("santafe");
+
+  const modelGlbUrl = isSedanModel ? "/models/sedan.glb" : isSuvModel ? "/models/suv.glb" : null;
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -149,11 +152,11 @@ export function Car3DViewer({
     const carGroup = new THREE.Group();
     const initialHex = COLOR_MAP[selectedColor] || 0xd97706;
 
-    if (isSedanModel) {
-      // LOAD REAL GLB MODEL FOR SEDAN (Meshy AI Mercedes-Benz C-Class Model)
+    if (modelGlbUrl) {
+      // LOAD REAL GLB MODEL FOR SEDAN AND SUV (Meshy AI GLB Models)
       const loader = new GLTFLoader();
       loader.load(
-        "/models/sedan.glb",
+        modelGlbUrl,
         (gltf) => {
           const model = gltf.scene;
 
@@ -162,7 +165,7 @@ export function Car3DViewer({
           const size = bbox.getSize(new THREE.Vector3());
           const center = bbox.getCenter(new THREE.Vector3());
 
-          // Target length ~ 4.5 units in Three.js world
+          // Target length ~ 4.6 units in Three.js world
           const maxDim = Math.max(size.x, size.y, size.z);
           const targetScale = 4.6 / maxDim;
           model.scale.set(targetScale, targetScale, targetScale);
@@ -201,11 +204,11 @@ export function Car3DViewer({
         },
         undefined,
         (err) => {
-          console.error("Error loading sedan.glb GLTF model:", err);
+          console.error(`Error loading ${modelGlbUrl} GLTF model:`, err);
         }
       );
     } else {
-      // Procedural 3D Model for Non-Sedan Body Types (SUV, MPV, Pickup, Hatchback)
+      // Procedural 3D Model for Non-Sedan & Non-SUV Body Types (MPV, Pickup, Hatchback)
       const bodyMat = new THREE.MeshPhysicalMaterial({
         color: initialHex,
         metalness: 0.6,
@@ -233,15 +236,14 @@ export function Car3DViewer({
       const taillightMat = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xd97706, emissiveIntensity: 1.8 });
 
       const isMPV = normalizedBody.includes("MPV");
-      const isSUV = normalizedBody.includes("SUV");
       const isPickup = normalizedBody.includes("PICKUP");
       const isHatchback = normalizedBody.includes("HATCHBACK");
 
-      const carLength = isPickup ? 4.8 : isSUV ? 4.6 : isMPV ? 4.5 : isHatchback ? 3.6 : 4.3;
-      const carWidth = isSUV || isPickup ? 2.2 : isMPV ? 2.1 : 2.0;
-      const chassisHeight = isSUV || isPickup ? 0.7 : isMPV ? 0.65 : 0.58;
-      const groundY = isSUV || isPickup ? 0.65 : isMPV ? 0.58 : 0.48;
-      const tireRadius = isSUV || isPickup ? 0.42 : 0.36;
+      const carLength = isPickup ? 4.8 : isMPV ? 4.5 : isHatchback ? 3.6 : 4.3;
+      const carWidth = isPickup ? 2.2 : isMPV ? 2.1 : 2.0;
+      const chassisHeight = isPickup ? 0.7 : isMPV ? 0.65 : 0.58;
+      const groundY = isPickup ? 0.65 : isMPV ? 0.58 : 0.48;
+      const tireRadius = isPickup ? 0.42 : 0.36;
 
       const chassisGeo = new THREE.BoxGeometry(carWidth, chassisHeight, carLength);
       const chassis = new THREE.Mesh(chassisGeo, bodyMat);
@@ -268,9 +270,9 @@ export function Car3DViewer({
         bed.position.set(0, groundY + 0.35, -1.3);
         carGroup.add(bed);
       } else {
-        const cabinLength = isMPV ? 2.6 : isSUV ? 2.4 : isHatchback ? 1.9 : 2.1;
-        const cabinHeight = isMPV ? 0.76 : isSUV ? 0.7 : 0.62;
-        const cabinZ = isMPV ? -0.1 : isSUV ? -0.15 : -0.2;
+        const cabinLength = isMPV ? 2.6 : isHatchback ? 1.9 : 2.1;
+        const cabinHeight = isMPV ? 0.76 : 0.62;
+        const cabinZ = isMPV ? -0.1 : -0.2;
 
         const cabinGeo = new THREE.BoxGeometry(carWidth - 0.25, cabinHeight, cabinLength);
         const cabin = new THREE.Mesh(cabinGeo, bodyMat);
@@ -278,7 +280,7 @@ export function Car3DViewer({
         cabin.castShadow = true;
         carGroup.add(cabin);
 
-        if (isMPV || isSUV) {
+        if (isMPV) {
           const railGeo = new THREE.BoxGeometry(0.06, 0.06, cabinLength - 0.2);
           const railL = new THREE.Mesh(railGeo, chromeMat);
           railL.position.set(-(carWidth / 2 - 0.15), groundY + chassisHeight / 2 + cabinHeight + 0.02, cabinZ);
@@ -411,7 +413,7 @@ export function Car3DViewer({
       renderer.dispose();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cameraDistance, autoRotate, darkStudio, bodyType, isSedanModel]);
+  }, [cameraDistance, autoRotate, darkStudio, bodyType, isSedanModel, isSuvModel]);
 
   // Dynamic Color Sync for both Procedural and GLTF Loaded GLB Models
   useEffect(() => {
@@ -488,7 +490,11 @@ export function Car3DViewer({
       <div className="absolute top-4 left-4 flex flex-wrap items-center gap-2 pointer-events-none">
         <Badge variant="secondary" className="bg-background/80 backdrop-blur-md border shadow font-semibold">
           <Eye className="h-3.5 w-3.5 mr-1 text-primary" />
-          {isSedanModel ? "Meshy GLTF 3D Model: Mercedes-Benz C-Class" : `WebGL 3D Studio: ${brandName} ${modelName}`}
+          {isSedanModel
+            ? "Meshy GLTF 3D Model: Mercedes-Benz C-Class"
+            : isSuvModel
+            ? "Meshy GLTF 3D Model: Ford Everest SUV"
+            : `WebGL 3D Studio: ${brandName} ${modelName}`}
         </Badge>
         <Badge variant="outline" className="bg-background/60 backdrop-blur-sm text-xs font-mono">
           Kiểu dáng: {bodyType}
