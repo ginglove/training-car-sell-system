@@ -19,8 +19,9 @@ export async function POST(request: NextRequest) {
       return apiError("Mã OTP không hợp lệ hoặc đã hết hạn", 400, "ERR_UI_005");
     }
 
-    if (newPassword.length < 8 || !/[A-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
-      return apiError("Mật khẩu tối thiểu 8 ký tự, gồm 1 chữ hoa và 1 số", 400, "ERR_UI_002");
+    const passwordRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return apiError("Mật khẩu tối thiểu 10 ký tự, gồm ít nhất 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt (@$!%*?&)", 400, "ERR_UI_002");
     }
 
     const [user] = await db

@@ -62,9 +62,14 @@ export function Header() {
               </Button>
             </>
           ) : (
-            <Link href="/login">
-              <Button size="sm">Đăng nhập</Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href="/register">
+                <Button variant="outline" size="sm">Đăng ký</Button>
+              </Link>
+              <Link href="/login">
+                <Button size="sm">Đăng nhập</Button>
+              </Link>
+            </div>
           )}
         </div>
       </div>

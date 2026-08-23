@@ -87,15 +87,16 @@ export async function POST(request: NextRequest) {
     }
 
     const accessoriesTotal = accessories.reduce(
-      (sum: number, a: any) => sum + (a.price || 0) * (a.quantity || 1),
+      (sum: number, a: any) => sum + (Number(a.price) || 0) * (Number(a.quantity) || 1),
       0
     );
     const insuranceTotal = includeInsurance ? 15000000 : 0;
+    const creditVal = Number(tradeInCreditValue) || 0;
     const finalPrice =
       Number(variant.listedPrice) +
       accessoriesTotal +
       insuranceTotal -
-      tradeInCreditValue;
+      creditVal;
 
     const orderCode = generateOrderCode();
     const txnRef = `TXN-${Date.now()}-${uuidv4().slice(0, 8)}`;

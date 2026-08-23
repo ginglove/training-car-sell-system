@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Car, Eye, EyeOff, Lock, Phone, Mail, ArrowLeft, UserCheck, KeyRound, CheckCircle2, AlertCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -425,6 +426,13 @@ function LoginContent() {
               </form>
             </TabsContent>
           </Tabs>
+
+          <div className="text-center text-xs text-muted-foreground border-t pt-4">
+            Chưa có tài khoản?{" "}
+            <Link href="/register" className="text-primary font-semibold hover:underline">
+              Đăng ký tài khoản mới
+            </Link>
+          </div>
         </CardContent>
       </Card>
 
