@@ -172,7 +172,7 @@ export function Car3DViewer({
       if (GLTF_CACHE.has(modelGlbUrl)) {
         const cachedModel = GLTF_CACHE.get(modelGlbUrl)!.clone();
         loadedModelMaterialsRef.current = [];
-        cachedModel.traverse((child) => {
+        cachedModel.traverse((child: any) => {
           if ((child as THREE.Mesh).isMesh) {
             const mesh = child as THREE.Mesh;
             mesh.castShadow = true;
@@ -219,7 +219,7 @@ export function Car3DViewer({
             GLTF_CACHE.set(modelGlbUrl, model);
 
             loadedModelMaterialsRef.current = [];
-            model.traverse((child) => {
+            model.traverse((child: any) => {
               if ((child as THREE.Mesh).isMesh) {
                 const mesh = child as THREE.Mesh;
                 mesh.castShadow = true;

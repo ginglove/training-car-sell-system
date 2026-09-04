@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
-
-const inter = Inter({ subsets: ["latin", "vietnamese"] });
 
 export const metadata: Metadata = {
   title: "Auto Dealership - Nền tảng bán hàng ô tô trực tuyến",
@@ -23,7 +20,7 @@ export default function RootLayout({
         <link rel="preload" href="/models/suv.glb" as="fetch" crossOrigin="anonymous" />
         <link rel="preload" href="/models/pickup.glb" as="fetch" crossOrigin="anonymous" />
       </head>
-      <body className={`${inter.className} antialiased`}>
+      <body className="font-sans antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>

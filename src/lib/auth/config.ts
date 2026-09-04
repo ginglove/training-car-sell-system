@@ -18,7 +18,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         otp: { label: "OTP", type: "text" },
         mode: { label: "Mode", type: "text" },
       },
-      async authorize(credentials) {
+      async authorize(credentials: any) {
         if (!credentials?.identity) return null;
 
         const identity = credentials.identity as string;
@@ -86,7 +86,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   session: { strategy: "jwt", maxAge: 24 * 60 * 60 },
   pages: { signIn: "/login", error: "/login" },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }: any) {
       if (user) {
         token.role = (user as any).role;
         token.showroomId = (user as any).showroomId;
@@ -94,7 +94,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: any) {
       if (session.user) {
         (session.user as any).id = token.sub;
         (session.user as any).role = token.role;

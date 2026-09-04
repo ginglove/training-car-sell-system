@@ -96,10 +96,6 @@ Ensure `netlify.toml` in your repository root is configured as follows:
 ```toml
 [build]
   command = "npm run build"
-  publish = ".next"
-
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
 
 [build.environment]
   NODE_VERSION = "20"

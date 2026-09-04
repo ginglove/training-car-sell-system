@@ -32,7 +32,11 @@ export async function POST(
 
     // Generate mock PayLink URL
     const payLinkToken = Buffer.from(`${order.id}:${Date.now()}`).toString("base64url");
-    const payLink = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/checkout/pay/${payLinkToken}`;
+    const baseUrl =
+      process.env.NEXTAUTH_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+    const payLink = `${baseUrl}/checkout/pay/${payLinkToken}`;
+
 
     // Create notification record (simulating Zalo ZNS)
     await db.insert(notifications).values({

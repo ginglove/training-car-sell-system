@@ -1,5 +1,4 @@
 import "dotenv/config";
-import { getDatabase } from "@netlify/database";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { sql as drizzleSql } from "drizzle-orm";
@@ -8,17 +7,19 @@ import * as schema from "../src/lib/db/schema";
 import { mockEncrypt, maskCCCD } from "../src/lib/mock/kms";
 
 async function seed() {
-  const connectionString = process.env.NETLIFY_DATABASE_URL || process.env.DATABASE_URL || process.env.NEON_DATABASE_URL;
+  const connectionString =
+    process.env.DATABASE_URL ||
+    process.env.NEON_DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.NETLIFY_DATABASE_URL;
   if (!connectionString) {
-    console.error("Error: NETLIFY_DATABASE_URL, DATABASE_URL, or NEON_DATABASE_URL environment variable is required to run seed.");
+    console.error("Error: DATABASE_URL, NEON_DATABASE_URL, or POSTGRES_URL environment variable is required to run seed.");
     process.exit(1);
   }
 
-  const netlifyDb = getDatabase({ connectionString });
-  const sql = ("httpClient" in netlifyDb && netlifyDb.httpClient)
-    ? netlifyDb.httpClient
-    : neon(netlifyDb.connectionString || connectionString);
+  const sql = neon(connectionString);
   const db = drizzle(sql, { schema });
+
 
   console.log("🚀 Starting comprehensive enterprise database seed (40 Real Cars Mapping)...");
 
